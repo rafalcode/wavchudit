@@ -64,8 +64,8 @@ int hdrchk(wh_t *inhdr, size_t fsz)
         return 1;
     }
 
-    printf("There substantial evidence in the non-numerical fields of this file's header to think it is a wav file\n");
-
+    printf("First test passed: there's substantial evidence in the non-numerical fields of header to think this is a wav file\n");
+    printf("Further details:\n"); 
     printf("glen: %i ", inhdr->glen);
     printf("byid: %i ", inhdr->byid);
     printf("nchans: %d ", inhdr->nchans);

@@ -18,6 +18,6 @@ this is not a player of wav-files, nor does it enable timings. I recomend sox or
 Before you edit wav-files you definitely will have needed to analyse them with this tools.
 
 # components
-endlop: lop off the end of the wav file. will output the beginning part of a wav file. Original file
-left untouched
-beglop
+* sanhwav: sanity check of wav-file's header only. To see if the header is well-formed.
+* beglop: lop off the beginning of a wav file. will output the end part of file. Original file left intact.
+* endlop: lop off the end of a wav file. will output the beginning part of file. Original file left intact.
