@@ -35,3 +35,6 @@ Before you edit wav-files you definitely will have needed to analyse them with t
 * beglop: lop off the beginning of a wav file. will output the end part of file. Original file left intact.
 * endlop: lop off the end of a wav file. will output the beginning part of file. Original file left intact.
 * xbeglop: dangerous edit, same as beglop, except it overwrites the lop off the beginning of a wav file. will output the end part of file. Original file left intact.
+* spwav2d, this SPlits a WAVfile TO a DIRECTORY. Aimed for large wav-files, it allows you to specify a chunk in units of
+time and it will split the wavfile into chunks of that size. If - as is probably the case, the chunk size does not divide evenly into the total wavfile size, one of the chunks will have a size less than the normal chunks size of the others.
+* catwav, this is an interesting program to try out on spwav2d, because it concatenates wavfiles, as its name suggests.
