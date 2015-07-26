@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
             inhdr->byid = point;
         inhdr->glen = inhdr->byid+36;
 
-        sprintf(fn, "%s/%03i.wav", tmpd, j);
+        sprintf(fn, "%s/%05i.wav", tmpd, j);
         outwavfp= fopen(fn,"wb");
 
         fwrite(inhdr, sizeof(char), 44, outwavfp);
