@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -Wall
 
-EXECUTABLES=sanwav cajwav beglop endlop spwav2d catwav xbeglop
+EXECUTABLES=sanwav cajwav beglop endlop spwav2d catwav xbeglop plreader
 
 # sanwav is wav-file sanity check program. It checks the files on the commandline and printsout key header values. Generally, one hopes for 44100sampfq, 1 short per capture.
 sanwav: sanwav.c
@@ -27,6 +27,10 @@ endlop: endlop.c
 
 # split wavs to a tmpdir according to chunks sized in mm:ss.huns format.
 spwav2d: spwav2d.c
+	${CC} ${CFLAGS} $^ -o $@
+
+# read a playlist: actually just slurps in a file listing as an array of lines treated as strings
+plreader: plreader.c
 	${CC} ${CFLAGS} $^ -o $@
 
 .PHONY: clean
