@@ -1,10 +1,10 @@
 CC=gcc
 CFLAGS=-g -Wall
 
-EXECUTABLES=sanwav cajwav beglop endlop spwav2d catwav xbeglop plreader
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader
 
-# sanwav is wav-file sanity check program. It checks the files on the commandline and printsout key header values. Generally, one hopes for 44100sampfq, 1 short per capture.
-sanwav: sanwav.c
+# sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
+sanhwav: sanhwav.c
 	${CC} ${CFLAGS} $^ -o $@
 
 # "cajwav" mnemonic "WAV CAJoler". This means it assumes there is a wav header and looks for some of the text entries. After that it starts to use the ftell() command to calculate the values of the other fields in the header.

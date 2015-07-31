@@ -64,8 +64,8 @@ int hdrchk(wh_t *inhdr, size_t fsz)
         return 1;
     }
 
-    printf("First test passed: there's substantial evidence in the non-numerical fields of header to think this is a wav file\n");
-    printf("Further details:\n"); 
+    printf("Header first tests fine: id, fstr, datastr, fmtnum and pcmnum all fine\n");
+    printf("Further header field: "); 
     printf("glen: %i ", inhdr->glen);
     printf("byid: %i ", inhdr->byid);
     printf("nchans: %d ", inhdr->nchans);
@@ -75,7 +75,7 @@ int hdrchk(wh_t *inhdr, size_t fsz)
     printf("bipsamp: %d\n", inhdr->bipsamp);
 
     if(inhdr->glen+8-44 == inhdr->byid)
-        printf("Good, \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", inhdr->byid, inhdr->glen);
+        printf("Checked:, \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", inhdr->byid, inhdr->glen);
     else {
         printf("WARNING: glen (%i) and byid (%i)do not show prerequisite normal relation(diff is %i).\n", inhdr->glen, inhdr->byid, inhdr->glen-inhdr->byid); 
     }
@@ -85,13 +85,13 @@ int hdrchk(wh_t *inhdr, size_t fsz)
     if( (inhdr->bypc == inhdr->byps/inhdr->sampfq) && (inhdr->bypc == 2) )
         printf("bypc complies with being 2 and matching byps/sampfq. Data values can therefore be recorded as signed shorts.\n"); 
 
-    if(inhdr->glen+8 == fsz)
-        printf("Good, \"glen\" is 8 less than the files size of %zu\n", fsz);
+    if(inhdr->byid+44 == fsz)
+        printf("Checked: header's byid is 44 less than stat.h's reading of file size (%zu).\n", fsz);
     else {
-        printf("WARNING: glen and file's size do not differ by 8 but by is %zu.\n", inhdr->glen-fsz);
+        printf("WARNING: byid and file's size do not differ by 44 but by is %li.\n", (long)(fsz - (size_t)inhdr->byid));
     }
 
-    printf("Playing time in secs of wavfile=%f\n", (float)inhdr->byid/inhdr->byps);
+    printf("All good. Playing time in secs %f\n", (float)inhdr->byid/inhdr->byps);
 
     return 0;
 }
