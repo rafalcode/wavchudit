@@ -1,7 +1,10 @@
 # "wavchudit" repository
 A set of command-line tools to edit wav files. Coded in C with only C standard library dependencies. Useful for breaking wavfiles into smaller, more manageable chunks. Beware that wavfiles are read into memory while editing: no streaming methods are used.
 
-In essence these tools are very similar to certain small functions of the SoX program, but with a different slant.
+In essence, these tools are very similar to certain small functions of the SoX program, but with a different slant.
+
+Why wav? Sure, that's a good question to ask, they tend to be big files. Well, they also can be edited losslessly, and are often
+an intermediate audio format. In any case, editing audio can be quite fiddly, and you will prbably only edit one wavfile that's big at a time.
 
 # introduction
 Many audio editting tools are presented via a GUI, where the waveform can be seen
