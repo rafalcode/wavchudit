@@ -203,7 +203,7 @@ wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chun
     return wh;
 }
 
-int hdrchk(wh_t *inhdr)
+int hdrchkbasic(wh_t *inhdr)
 {
     /* OK .. we test what sort of header we have */
     if ( inhdr->id[0] != 'R'
@@ -242,27 +242,6 @@ int hdrchk(wh_t *inhdr)
         return 1;
     }
 
-    printf("There substantial evidence in the non-numerical fields of this file's header to think it is a wav file\n");
-
-    printf("glen: %i\n", inhdr->glen);
-    printf("byid: %i\n", inhdr->byid);
-    printf("nchans: %d\n", inhdr->nchans);
-    printf("sampfq: %i\n", inhdr->sampfq);
-    printf("byps: %i\n", inhdr->byps);
-    printf("bypc, bytes by capture (count of data in shorts): %d\n", inhdr->bypc);
-    printf("bipsamp: %d\n", inhdr->bipsamp);
-
-    if(inhdr->glen+8-44 == inhdr->byid)
-        printf("Good, \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", inhdr->byid, inhdr->glen);
-    else {
-        printf("WARNING: glen (%i) and byid (%i)do not show prerequisite normal relation(diff is %i).\n", inhdr->glen, inhdr->byid, inhdr->glen-inhdr->byid); 
-    }
-    // printf("Duration by glen is: %f\n", (float)(inhdr->glen+8-wh_tsz)/(inhdr->nchans*inhdr->sampfq*inhdr->byps));
-    printf("Duration by byps is: %f\n", (float)(inhdr->glen+8-44)/inhdr->byps);
-
-    if( (inhdr->bypc == inhdr->byps/inhdr->sampfq) && (inhdr->bypc == 2) )
-        printf("bypc complies with being 2 and matching byps/sampfq. Data values can therefore be recorded as signed shorts.\n"); 
-
     return 0;
 }
 
@@ -274,19 +253,29 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     int i, j, k, nr, nc;
-    /* open our wav file: we get the header in early that way */
-    FILE *inwavfp;
-    inwavfp = fopen(argv[1],"rb");
-    if ( inwavfp == NULL ) {
+    /* we expect som pretty big wavs so we can't rely on byid and gleni:
+     * let's use stat.h to work them out instead */
+    struct stat fsta;
+    if(stat(argv[1], &fsta) == -1) {
         fprintf(stderr,"Can't open input file %s", argv[2]);
         exit(EXIT_FAILURE);
     }
+    size_t statglen=fsta.st_size-8;
+    size_t statbyd=statglen-36;
+    /* open our wav file: we get the header in early that way */
+    FILE *inwavfp;
+    inwavfp = fopen(argv[1],"rb");
     /* of course we also need the header for other bits of data */
     wh_t *inhdr=malloc(sizeof(wh_t));
     if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
         printf("Can't read file header\n");
         exit(EXIT_FAILURE);
     }
+    if (hdrchkbasic(wh_t)) {
+        printf("Header failed some basic WAV/RIFF file checks.\n");
+        exit(EXIT_FAILURE);
+    }
+
     /* Read in the edl file: note that the third value is irrelevant for us,
      * it's some sort of marker mplayer puts in */
     float *mat=processinpf(argv[2], &nr, &nc);
@@ -311,16 +300,18 @@ int main(int argc, char *argv[])
     char *fn=calloc(GBUF, sizeof(char));
     char *bf=malloc(inhdr->byid);
     FILE *outwavfp;
+    int stap, endp, staby;
+    int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
 
-    for(j=0;j<chunkquan;++j) { /* note we will reuse the header, only changing byid and glen */
+    for(j=0;j<chunkquan;++j) { /* note we will reuse the inhdr, only changing byid and glen */
 
-        if( (j==chunkquan-1) && partchunk)
-            inhdr->byid = partchunk;
-        else 
-            inhdr->byid = point;
+        endi=2*j+1; /* end index */
+        stai=2*j; /* start index */
+        inhdr->byid = (sampa[endi] - sampa[stai])*byidmultplier;
+        staby=sampa[stai]*byidmultplier;
         inhdr->glen = inhdr->byid+36;
 
-        sprintf(fn, "%s/%05i.wav", tmpd, j);
+        sprintf(fn, "%s/%02i.wav", tmpd, j); /* purposely only allow a hundred edits */
         outwavfp= fopen(fn,"wb");
 
         fwrite(inhdr, sizeof(char), 44, outwavfp);
@@ -329,7 +320,7 @@ int main(int argc, char *argv[])
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
         }
-        fwrite(bf, sizeof(char), inhdr->byid, outwavfp);
+        fwrite(bf+staby, sizeof(char), inhdr->byid, outwavfp);
         fclose(outwavfp);
     }
     fclose(inwavfp);
