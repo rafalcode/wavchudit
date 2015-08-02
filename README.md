@@ -40,3 +40,4 @@ Before you edit wav-files you definitely will have needed to analyse them with t
 * spwav2d, this SPlits a WAVfile TO a DIRECTORY. Aimed for large wav-files, it allows you to specify a chunk in units of
 time and it will split the wavfile into chunks of that size. If - as is probably the case, the chunk size does not divide evenly into the total wavfile size, one of the chunks will have a size less than the normal chunks size of the others.
 * catwav, this is an interesting program to try out on spwav2d, because it concatenates wavfiles, as its name suggests.
+* wavedl, needs to be run in conjunction with mplayer's -edlout switch. When navigating a wav file with mplayer, this mode records time points whne a first "i" is typed, and a second "i" is typed and stores them in a text file. this program reads the text file and outputs a wavfile for each edl first-second pair.

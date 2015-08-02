@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -Wall
 
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -32,6 +32,13 @@ spwav2d: spwav2d.c
 # split wavs according to a level
 spwlev: spwlev.c
 	${CC} ${CFLAGS} $^ -o $@
+
+# split wavs according to a mplayer's EDL file
+wavedl: wavedl.c
+	${CC} ${CFLAGS} $^ -o $@
+
+wavedl_d: wavedl.c
+	${CC} ${CFLAGS} -DDBG $^ -o $@
 
 # read a playlist: actually just slurps in a file listing as an array of lines treated as strings
 plreader: plreader.c
