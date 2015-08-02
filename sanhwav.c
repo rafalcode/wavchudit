@@ -65,17 +65,17 @@ int hdrchk(wh_t *inhdr, size_t fsz)
     }
 
     printf("Header first tests fine: id, fstr, datastr, fmtnum and pcmnum all fine\n");
-    printf("Further header field: "); 
-    printf("glen: %i ", inhdr->glen);
-    printf("byid: %i ", inhdr->byid);
-    printf("nchans: %d ", inhdr->nchans);
-    printf("sampfq: %i ", inhdr->sampfq);
-    printf("byps: %i ", inhdr->byps);
-    printf("bypc: %d ", inhdr->bypc);
+    printf("Further header fields: "); 
+    printf("glen: %i /", inhdr->glen);
+    printf("byid: %i /", inhdr->byid);
+    printf("nchans: %d /", inhdr->nchans);
+    printf("sampfq: %i /", inhdr->sampfq);
+    printf("byps: %i /", inhdr->byps);
+    printf("bypc: %d /", inhdr->bypc);
     printf("bipsamp: %d\n", inhdr->bipsamp);
 
     if(inhdr->glen+8-44 == inhdr->byid)
-        printf("Checked:, \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", inhdr->byid, inhdr->glen);
+        printf("Checked: \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", inhdr->byid, inhdr->glen);
     else {
         printf("WARNING: glen (%i) and byid (%i)do not show prerequisite normal relation(diff is %i).\n", inhdr->glen, inhdr->byid, inhdr->glen-inhdr->byid); 
     }
