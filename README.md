@@ -13,7 +13,7 @@ are also somewhat rough (opening and saving a wav file without any editing whats
 file: somewhat suspicious). Also, a GUI means that bulk processing may take a backrow seat.
 
 So I came up with these tools in order to have greater control, and introduce the idea of "blind" wav-file editing. You will need to use
-sox or mplayer to establish the timings of interest, so you can decide where to edit.
+sox or mplayer to establish the timings of interest, so you can decide where to edit. Mplayer is the best auditory navigator, enabling you to jump in three sizes of steps: by defualt these are 10 secs, 60 secs or 600 secs and tese can be varied. It's timing is not entirely perfect, but getting the timing of certain edit point exactly right is not easy, whatever medium you choose. Often, you decide that you want another edit point at the last minute, so it's question of living with this inexactitude.
 
 # modus operandi
 You usually are using sox's play or mplayer to listen to a wav-file, and decide you are only interested in a certain part. As is the case with "blind" editing, you only have a basic idea of the timing. Often, you have not written it down, it's only in your head. So these are things you can do
@@ -22,10 +22,12 @@ You usually are using sox's play or mplayer to listen to a wav-file, and decide 
 (Note how you only need one, not the more common two - timings for these two operations. Commonly, you will use one and then the other
 perhaps several times to close in on the area of interest.
 
-## dependencies
-only the standard C library. I did start by using libsndfile,
-but in truth, the wav data structure is rather easy, so I made
-the code independent of libsndfile, so no wit's self-standing
+# WAV/RIFF data format notes
+Current dependencies are only the standard C library. I did start by using libsndfile, but in truth, the wav data structure is rather simple, so I made the code independent of libsndfile, so now it's self-standing, so to speak.
+
+## some notes about WAV/RIFF
+* The first thing to note is that 4 bytes (ints) are used to hold the length of the data. Ths means that very big wavs (over 2G and a bit or so) will probably overflow the type. You're better off not depending on this field (BYtes In Data: byid) and calculating hte size of the file in the code and storing it as 8 bytes long or unsigned long.
+* the BYtes Per Capture field is a little awry, and it seems a mistake to depend upon it. For the canonical 16bit sampling it should be 2, but in many stereo wavs, it reads 4. WAVS with bypc=2 and bypc=4 get treated the same way and "soxi" at least reports 16bit always. This could be a problem if 24bit sampling is used, which would need ints instead of shorts. In any case, the way around this inconsistency is to use BItsPerSAMPleS divided by 8, to work out whether "short"s or "int"s should be used.
 
 # initial scope
 Merely to extract chunks out of wav files. Plenty of tools do this to other sound formats,

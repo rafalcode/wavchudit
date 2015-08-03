@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     fclose(inwavfp);
-    fwrite(bf, sizeof(char), inhdr->byid, outwavfp);
+    fwrite(bf, sizeof(unsigned char), inhdr->byid, outwavfp);
     fclose(outwavfp);
     free(bf);
 
