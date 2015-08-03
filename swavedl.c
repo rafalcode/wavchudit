@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     size_t statglen=fsta.st_size-8;
-    size_t statbyid=statglen-36;
+    size_t tstatbyid=statglen-36; /* total stabyid, because we'll have a "current" stabyid for the chunks */
     /* open our wav file: we get the header in early that way */
     FILE *inwavfp;
     inwavfp = fopen(argv[1],"rb");
@@ -298,26 +298,25 @@ int main(int argc, char *argv[])
     printf("\n"); 
 #endif
 
-    int chunkquan=nr*(nc-1)/2;
+    int chunkquan=nr*(nc-1)+1; /* include pre-first edlstartpt, post-last edlendpt, and edlstart and edlend interstitials. */
 
     char *tmpd=mktmpd();
     char *fn=calloc(GBUF, sizeof(char));
     unsigned char *bf=NULL;
     FILE *outwavfp;
-    int stai, endi;
-    size_t staby;
+    size_t frompt, topt, staby, cstatbyid /* current statbyid */;
     int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
 
-    for(j=0;j<chunkquan;++j) { /* note we will reuse the inhdr, only changing byid and glen */
+    for(j=0;j<=chunkquan;++j) { /* note we will reuse the inhdr, only changing byid and glen */
 
-        endi=2*j+1; /* end index */
-        stai=2*j; /* start index */
-        statbyid = (sampa[endi] - sampa[stai])*byidmultiplier;
-        bf=realloc(bf, statbyid*sizeof(unsigned char));
-        staby=sampa[stai]*byidmultiplier;
+        frompt = (j==0)? 0: sampa[j-1];
+        topt = (j==chunkquan)? tstatbyid: sampa[j];
+        cstatbyid = (topt - frompt)*byidmultiplier;
+        bf=realloc(bf, cstatbyid*sizeof(unsigned char));
+        staby=0sampa[i]*byidmultiplier;
 
         /* here we revert to wav's limitations on max file size */
-        inhdr->byid=(int)statbyid; /* overflow a distinct possibility */
+        inhdr->byid=(int)cstatbyid; /* overflow a distinct possibility */
         inhdr->glen = inhdr->byid+36;
 
         sprintf(fn, "%s/%03i.wav", tmpd, j); /* purposely only allow FOR 1000 edits */
@@ -326,11 +325,11 @@ int main(int argc, char *argv[])
         fwrite(inhdr, sizeof(unsigned char), 44, outwavfp);
 
         fseek(inwavfp, 44+staby, SEEK_SET); /* originally forgot to skip the 44 bytes of the header! */
-        if ( fread(bf, statbyid, sizeof(unsigned char), inwavfp) < 1 ) {
+        if ( fread(bf, cstatbyid, sizeof(unsigned char), inwavfp) < 1 ) {
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
         }
-        fwrite(bf, sizeof(unsigned char), statbyid, outwavfp);
+        fwrite(bf, sizeof(unsigned char), cstatbyid, outwavfp);
         fclose(outwavfp);
     }
     fclose(inwavfp);

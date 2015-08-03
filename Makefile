@@ -37,8 +37,15 @@ spwlev: spwlev.c
 wavedl: wavedl.c
 	${CC} ${CFLAGS} $^ -o $@
 
+# debug version of the above
 wavedl_d: wavedl.c
 	${CC} ${CFLAGS} -DDBG $^ -o $@
+
+# a variation of the edl reading: splits enitre wav up: edlpts used as single markers, not start and endpoints.
+# NOTE: mplayer will only allow start- and end- edlpoint pairs. If you type "i" an uneven number of times
+# the final "i" wil not be recorded.
+swavedl: swavedl.c
+	${CC} ${CFLAGS} $^ -o $@
 
 # read a playlist: actually just slurps in a file listing as an array of lines treated as strings
 plreader: plreader.c

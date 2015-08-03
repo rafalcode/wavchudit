@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
     strcat(outfn, "_elop.wav");
     FILE *outwavfp= fopen(outfn,"wb");
 
-    /* write we can already write out inhdr to there */
+    /* write: we can already write out inhdr to there */
     fwrite(inhdr, sizeof(char), 44, outwavfp);
     /* now we want to read in the the first files data into a buffer
     the FILEptrs are already positioned perfectly */
