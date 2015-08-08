@@ -1,5 +1,5 @@
 # "wavchudit" repository
-A set of command-line tools to edit wav files. Coded in C with only C standard library dependencies. Useful for breaking wavfiles into smaller, more manageable chunks. Beware that wavfiles are read into memory while editing: no streaming methods are used.
+A set of command-line tools to edit wav files. Coded in C with only C standard library dependencies. Useful for breaking wavfiles into smaller, more manageable chunks. Some wav files can be very big, so it's besti not to read them into memory in one go, and rather navigate them as files using fseek. However, if there is no effort in this code to limit the size of the wav chuns that are read in, and sometimes these can be big 8>2G) too.
 
 In essence, these tools are very similar to certain small functions of the SoX program, but with a different slant.
 
@@ -25,9 +25,14 @@ perhaps several times to close in on the area of interest.
 # WAV/RIFF data format notes
 Current dependencies are only the standard C library. I did start by using libsndfile, but in truth, the wav data structure is rather simple, so I made the code independent of libsndfile, so now it's self-standing, so to speak.
 
-## some notes about WAV/RIFF
-* The first thing to note is that 4 bytes (ints) are used to hold the length of the data. Ths means that very big wavs (over 2G and a bit or so) will probably overflow the type. You're better off not depending on this field (BYtes In Data: byid) and calculating hte size of the file in the code and storing it as 8 bytes long or unsigned long.
-* the BYtes Per Capture field is a little awry, and it seems a mistake to depend upon it. For the canonical 16bit sampling it should be 2, but in many stereo wavs, it reads 4. WAVS with bypc=2 and bypc=4 get treated the same way and "soxi" at least reports 16bit always. This could be a problem if 24bit sampling is used, which would need ints instead of shorts. In any case, the way around this inconsistency is to use BItsPerSAMPleS divided by 8, to work out whether "short"s or "int"s should be used.
+## The size limitation of the "int" type
+The first thing to note is that 4 bytes (ints) are used to hold the length of the data. Ths means that very big wavs (over 2G and a bit or so) will probably overflow the type. You're better off not depending on this field (BYtes In Data: byid) and calculating hte size of the file in the code and storing it as 8 bytes long or unsigned long.
+
+## the so-called BYtes Per Cpature header field
+the BYtes Per Capture field is a little awry, and it seems a mistake to depend upon it. For the canonical 16bit sampling it should be 2, but in many stereo wavs, it reads 4. WAVS with bypc=2 and bypc=4 get treated the same way and "soxi" at least reports 16bit always. This could be a problem if 24bit sampling is used, which would need ints instead of shorts. In any case, the way around this inconsistency is to use BItsPerSAMPleS divided by 8, to work out whether "short"s or "int"s should be used.
+
+## How to think and work in sample
+It's easy to get a little confused with the naming conventions implied by the WAV/RIFF header. Overall however, it's best to think in samples. Whether shorts are used to quantise their values, or whether they are single or 2 channel are part of the nature of "a sample", and will need to be decided at the beginning, when reading from a wav, and at the end, when writing to one.
 
 # initial scope
 Merely to extract chunks out of wav files. Plenty of tools do this to other sound formats,

@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -Wall
 
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d edlread
 
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
@@ -41,6 +41,9 @@ wavedl: wavedl.c
 # debug version of the above
 wavedl_d: wavedl.c
 	${CC} ${CFLAGS} -DDBG $^ -o $@
+
+edlread: edlread.c
+	${CC} ${CFLAGS} $^ -o $@
 
 # a variation of the edl reading: splits (therefore the "s") entire wav up: edlpts used as single markers, not start and endpoints.
 # NOTE: mplayer will only allow start- and end- edlpoint pairs. If you type "i" an uneven number of times
