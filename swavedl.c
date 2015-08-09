@@ -8,9 +8,6 @@
 #include <sys/stat.h>
 #include <dirent.h> 
 
-#define MXINTV 0x7FFFFFFF /* max int value */
-
-#define ARBSZ 128
 #define GBUF 64
 #define WBUF 8
 
