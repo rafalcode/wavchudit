@@ -316,22 +316,68 @@ aaw_c *processinpf(char *fname)
 int main(int argc, char *argv[])
 {
     /* argument accounting */
-    if(argc!=3) {
-        printf("Program usage. Two args 1) edl file 2) time shift to apply eg. -.5, move timepoints back by half a second.\n");
+    if(argc != 3) {
+        printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
+        printf("2 arguments: 1) Name of wavfile. 2) name of edl-file.\n"
+        exit(EXIT_FAILURE);
+        }
+
+     /* let's use stat.h to work out size of WAV instead of its header info .. it's more reliable */
+    struct stat fsta;
+    if(stat(argv[1], &fsta) == -1) {
+        fprintf(stderr,"Can't open input file %s", argv[2]);
+        exit(EXIT_FAILURE);
+        }
+    size_t statglen=fsta.st_size-8;
+    size_t tstatbyid=statglen-36; /* total stabyid, because we'll have a "current" stabyid for the chunks */
+    /* open our wav file: we get the header in early that way */
+    FILE *inwavfp;
+    inwavfp = fopen(argv[1],"rb");
+    /* of course we also need the header for other bits of data */
+    wh_t *inhdr=malloc(sizeof(wh_t));
+    if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
+        printf("Can't read file header\n");
+        exit(EXIT_FAILURE);
+    }
+    if (hdrchkbasic(inhdr)) {
+        printf("Header failed some basic WAV/RIFF file checks.\n");
         exit(EXIT_FAILURE);
     }
 
     int i;
+
     aaw_c *aawc=processinpf(argv[1]);
     float *a=edlf2arr(aawc);
-    char ofn[256]={0};
-    char *dot=strrchr(argv[1], '.');
-    strncpy(ofn,argv[1],dot-argv[1]);
-    strcat(ofn,".timepts");
 
-    FILE *fo=fopen(ofn, "w");
-    float mtpt; /* modified timepoint */
-    unsigned h, m, s;
+    /* convert seconds to sample timepts */
+    size_t *sampa=malloc(aawc->numl*2*sizeof(size_t));
+    for(i=0;i<aawc->numl*2;++i)
+            sampa[i]=(size_t)(.5 + ((float)inhdr->sampfq)*a[i]);
+    free(a);
+
+    /* this version: ignore leading and ending chunk */
+    int chunkquan=aawc->numl-1;
+    char *tmpd=mktmpd();
+    char *fn=calloc(GBUF, sizeof(char));
+    unsigned char *bf=NULL;
+    FILE *outwavfp;
+    size_t frompt, topt, staby, cstatbyid /* current statbyid */;
+    int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
+
+    for(j=0;j<chunkquan-1;++j) {
+
+        /* following for convenvenice to allow variation */
+        /*
+        frompt = (j==0)? 0: sampa[j-1];
+        topt = (j==chunkquan-1)? totsamps: sampa[j];
+        */
+        frompt = sampa[j];
+        topt = sampa[j+1];
+
+        cstatbyid = (sampatopt - frompt)*byidmultiplier;
+
+
+
     for(i=0;i<aawc->numl*2;++i) {
         mtpt=a[i]+atof(argv[2]);
         h=((unsigned)mtpt)/3600;
