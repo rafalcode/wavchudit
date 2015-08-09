@@ -167,33 +167,6 @@ char *mktmpd(void)
     return myt;
 }
 
-long fszfind(FILE *fp)
-{
-    rewind(fp);
-    fseek(fp, 0, SEEK_END);
-    long fbytsz = ftell(fp);
-    rewind(fp);
-    return fbytsz;
-}
-
-wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chunk of certain siez */
-{
-    wh_t *wh=malloc(sizeof(wh_t));
-    strncpy(wh->id, "RIFF", 4);
-    strncpy(wh->fstr, "WAVEfmt ", 8);
-    strncpy(wh->datastr, "data", 4);
-    wh->fmtnum=16;
-    wh->pcmnum=1;
-    wh->nchans=nucha; /* fed in to function */
-    wh->sampfq=sfre; /* fed in to function */
-    wh->glen=certainsz-8;
-    wh->bipsamp=16;
-    wh->bypc=wh->bipsamp/8;
-    wh->byps=wh->nchans*wh->sampfq*wh->bypc;
-    wh->byid=wh->glen-36;
-    return wh;
-}
-
 int hdrchkbasic(wh_t *inhdr)
 {
     /* OK .. we test what sort of header we have */

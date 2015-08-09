@@ -1,22 +1,15 @@
-/* Takes a wav file and an mplayer-generated edl file and extracts the chunks */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <dirent.h> 
+#include "genread.h"
 
-#define MXINTV 0x7FFFFFFF /* max int value */
-
-#define ARBSZ 128
 #define GBUF 64
 #define WBUF 8
 
-typedef unsigned char boole;
-
-typedef struct
+typedef struct /* wh_t: WAV header type */
 {
     char id[4]; // should always contain "RIFF"
     int glen;    // general length: total file length minus 8, could because the types so far seen (id and glen itself) are actually 8 bytes
@@ -31,171 +24,6 @@ typedef struct
     char datastr[4]; // should always contain "data"
     int byid; // BYtes_In_Data;
 } wh_t; /* wav header type */
-
-typedef struct /* wseq_t */
-{
-    size_t *wln;
-    size_t wsbuf;
-    size_t quan;
-    size_t lbuf;
-    size_t numl;
-    size_t *wpla; /* words per line array number of words per line */
-} wseq_t;
-
-wseq_t *create_wseq_t(size_t initsz)
-{
-    wseq_t *words=malloc(sizeof(wseq_t));
-    words->wsbuf = initsz;
-    words->quan = initsz;
-    words->wln=calloc(words->wsbuf, sizeof(size_t));
-    words->lbuf=WBUF;
-    words->numl=0;
-    words->wpla=calloc(words->lbuf, sizeof(size_t));
-    return words;
-}
-
-void free_wseq(wseq_t *wa)
-{
-    free(wa->wln);
-    free(wa->wpla);
-    free(wa);
-}
-
-double *processinpf(char *fname, int *m, int *n)
-{
-    /* In order to make no assumptions, the file is treated as lines containing the same amount of words each,
-     * except for lines starting with #, which are ignored (i.e. comments). These words are checked to make sure they contain only floating number-type
-     * characters [0123456789+-.] only, one string variable is icontinually written over and copied into a growing floating point array each time */
-
-    /* declarations */
-    FILE *fp=fopen(fname,"r");
-    int i;
-    size_t couc /*count chars */, couw=0 /* count words */, oldcouw = 0;
-    char c;
-    boole inword=0;
-    wseq_t *wa=create_wseq_t(GBUF);
-    size_t bwbuf=WBUF;
-    char *bufword=calloc(bwbuf, sizeof(char)); /* this is the string we'll keep overwriting. */
-
-    double *mat=malloc(GBUF*sizeof(double));
-
-    while( (c=fgetc(fp)) != EOF) {
-        /*  take care of  */
-        if( (c== '\n') | (c == ' ') | (c == '\t') | (c=='#')) {
-            if( inword==1) { /* we end a word */
-                wa->wln[couw]=couc;
-                bufword[couc++]='\0';
-                bufword = realloc(bufword, couc*sizeof(char)); /* normalize */
-                mat[couw]=atof(bufword);
-                couc=0;
-                couw++;
-            }
-            if(c=='#') {
-                while( (c=fgetc(fp)) != '\n') ;
-                continue;
-            } else if(c=='\n') {
-                if(wa->numl == wa->lbuf-1) {
-                    wa->lbuf += WBUF;
-                    wa->wpla=realloc(wa->wpla, wa->lbuf*sizeof(size_t));
-                    memset(wa->wpla+(wa->lbuf-WBUF), 0, WBUF*sizeof(size_t));
-                }
-                wa->wpla[wa->numl] = couw-oldcouw;
-                oldcouw=couw;
-                wa->numl++;
-            }
-            inword=0;
-        } else if( (inword==0) && ((c == 0x2B) | (c == 0x2D) | (c == 0x2E) | ((c >= 0x30) && (c <= 0x39))) ) { /* deal with first character of new word, + and - also allowed */
-            if(couw == wa->wsbuf-1) {
-                wa->wsbuf += GBUF;
-                wa->wln=realloc(wa->wln, wa->wsbuf*sizeof(size_t));
-                mat=realloc(mat, wa->wsbuf*sizeof(double));
-                for(i=wa->wsbuf-GBUF;i<wa->wsbuf;++i)
-                    wa->wln[i]=0;
-            }
-            couc=0;
-            bwbuf=WBUF;
-            bufword=realloc(bufword, bwbuf*sizeof(char)); /* don't bother with memset, it's not necessary */
-            bufword[couc++]=c; /* no need to check here, it's the first character */
-            inword=1;
-        } else if( (c == 0x2E) | ((c >= 0x30) && (c <= 0x39)) ) {
-            if(couc == bwbuf-1) { /* the -1 so that we can always add and extra (say 0) when we want */
-                bwbuf += WBUF;
-                bufword = realloc(bufword, bwbuf*sizeof(char));
-            }
-            bufword[couc++]=c;
-        } else {
-            printf("Error. Non-float character detected. This program is only for reading floats\n"); 
-            free_wseq(wa);
-            exit(EXIT_FAILURE);
-        }
-
-    } /* end of big for statement */
-    fclose(fp);
-    free(bufword);
-
-    /* normalization stage */
-    wa->quan=couw;
-    wa->wln = realloc(wa->wln, wa->quan*sizeof(size_t)); /* normalize */
-    mat = realloc(mat, wa->quan*sizeof(double)); /* normalize */
-    wa->wpla= realloc(wa->wpla, wa->numl*sizeof(size_t));
-
-    *m= wa->numl;
-    int k=wa->wpla[0];
-    for(i=1;i<wa->numl;++i)
-        if(k != wa->wpla[i])
-            printf("Warning: Numcols is not uniform at %i words per line on all lines. This file has one with %zu.\n", k, wa->wpla[i]); 
-    *n= k; 
-    free_wseq(wa);
-
-    return mat;
-}
-
-char *mktmpd(void)
-{
-    struct timeval tsecs;
-    gettimeofday(&tsecs, NULL);
-    char *myt=calloc(14, sizeof(char));
-    strncpy(myt, "tmpdir_", 7);
-    sprintf(myt+7, "%lu", tsecs.tv_usec);
-
-    DIR *d;
-    while((d = opendir(myt)) != NULL) { /* see if a directory witht the same name exists ... very low likelihood though */
-        gettimeofday(&tsecs, NULL);
-        sprintf(myt+7, "%lu", tsecs.tv_usec);
-        closedir(d);
-    }
-    closedir(d);
-    mkdir(myt, S_IRWXU);
-
-    return myt;
-}
-
-long fszfind(FILE *fp)
-{
-    rewind(fp);
-    fseek(fp, 0, SEEK_END);
-    long fbytsz = ftell(fp);
-    rewind(fp);
-    return fbytsz;
-}
-
-wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chunk of certain siez */
-{
-    wh_t *wh=malloc(sizeof(wh_t));
-    strncpy(wh->id, "RIFF", 4);
-    strncpy(wh->fstr, "WAVEfmt ", 8);
-    strncpy(wh->datastr, "data", 4);
-    wh->fmtnum=16;
-    wh->pcmnum=1;
-    wh->nchans=nucha; /* fed in to function */
-    wh->sampfq=sfre; /* fed in to function */
-    wh->glen=certainsz-8;
-    wh->bipsamp=16;
-    wh->bypc=wh->bipsamp/8;
-    wh->byps=wh->nchans*wh->sampfq*wh->bypc;
-    wh->byid=wh->glen-36;
-    return wh;
-}
 
 int hdrchkbasic(wh_t *inhdr)
 {
@@ -239,105 +67,286 @@ int hdrchkbasic(wh_t *inhdr)
     return 0;
 }
 
-int main(int argc, char *argv[])
+char *mktmpd(void)
 {
-    if(argc != 3) {
-        printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-        printf("2 arguments: 1) Name of wavfile. 2) name of edl-file.\n");
-        exit(EXIT_FAILURE);
+    struct timeval tsecs;
+    gettimeofday(&tsecs, NULL);
+    char *myt=calloc(14, sizeof(char));
+    strncpy(myt, "tmpdir_", 7);
+    sprintf(myt+7, "%lu", tsecs.tv_usec);
+
+    DIR *d;
+    while((d = opendir(myt)) != NULL) { /* see if a directory witht the same name exists ... very low likelihood though */
+        gettimeofday(&tsecs, NULL);
+        sprintf(myt+7, "%lu", tsecs.tv_usec);
+        closedir(d);
     }
-    int i, j, k, nr, nc;
-    /* we expect som pretty big wavs so we can't rely on byid and gleni:
-     * let's use stat.h to work them out instead */
-    struct stat fsta;
-    if(stat(argv[1], &fsta) == -1) {
-        fprintf(stderr,"Can't open input file %s", argv[2]);
-        exit(EXIT_FAILURE);
-    }
-    size_t statglen=fsta.st_size-8;
-    size_t statbyid=statglen-36;
-    /* open our wav file: we get the header in early that way */
-    FILE *inwavfp;
-    inwavfp = fopen(argv[1],"rb");
-    /* of course we also need the header for other bits of data */
-    wh_t *inhdr=malloc(sizeof(wh_t));
-    if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
-        printf("Can't read file header\n");
-        exit(EXIT_FAILURE);
-    }
-    if (hdrchkbasic(inhdr)) {
-        printf("Header failed some basic WAV/RIFF file checks.\n");
-        exit(EXIT_FAILURE);
-    }
+    closedir(d);
+    mkdir(myt, S_IRWXU);
 
-    /* Read in the edl file: note that the third value is irrelevant for us,
-     * it's some sort of marker mplayer puts in */
-    double *mat=processinpf(argv[2], &nr, &nc);
-    int divby3=(nr*nc)%3;
-    if(divby3) {
-        printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
-        exit(EXIT_FAILURE);
-    }
-#ifdef DBG
-    printf("nr: %d nc: %d\n", nr, nc); 
-#endif
-    int sampasz=nr*(nc-1); /* we get rid of one colum: mne: samp-pt array size */
-    size_t *sampa=malloc(sampasz*sizeof(size_t));
-    k=0;
-    for(i=0;i<nr;++i) 
-        for(j=0;j<nc;++j) {
-            if(!((nc*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
-                continue;
-#ifdef DBG
-          printf("%d ", (nc*i+j+1)%3); 
-#endif
-            sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[nc*i+j]);
-        }
-    free(mat); /* we've rendered the edl matrix into a integers now, as in sampa */
-#ifdef DBG
-    printf("\n"); 
-#endif
+    return myt;
+}
 
-    int chunkquan=nr*(nc-1)/2;
+w_c *crea_wc(unsigned initsz)
+{
+    w_c *wc=malloc(sizeof(w_c));
+    wc->lp1=initsz;
+    wc->t=STR;
+    wc->w=malloc(wc->lp1*sizeof(char));
+    return wc;
+}
 
-    char *tmpd=mktmpd();
-    char *fn=calloc(GBUF, sizeof(char));
-    unsigned char *bf=NULL;
-    FILE *outwavfp;
-    int stai, endi;
-    size_t staby;
-    int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
+void reall_wc(w_c **wc, unsigned *cbuf)
+{
+    w_c *twc=*wc;
+    unsigned tcbuf=*cbuf;
+    tcbuf += CBUF;
+    twc->lp1=tcbuf;
+    twc->w=realloc(twc->w, tcbuf*sizeof(char));
+    *wc=twc; /* realloc can often change the ptr */
+    *cbuf=tcbuf;
+    return;
+}
 
-    for(j=0;j<chunkquan;++j) { /* note we will reuse the inhdr, only changing byid and glen */
+void norm_wc(w_c **wc)
+{
+    w_c *twc=*wc;
+    twc->w=realloc(twc->w, twc->lp1*sizeof(char));
+    *wc=twc; /* realloc can often change the ptr */
+    return;
+}
 
-        endi=2*j+1; /* end index */
-        stai=2*j; /* start index */
-        statbyid = (sampa[endi] - sampa[stai])*byidmultiplier;
-        bf=realloc(bf, statbyid*sizeof(unsigned char));
-        staby=sampa[stai]*byidmultiplier;
+void free_wc(w_c **wc)
+{
+    w_c *twc=*wc;
+    free(twc->w);
+    free(twc);
+    return;
+}
 
-        /* here we revert to wav's limitations on max file size */
-        inhdr->byid=(int)statbyid; /* overflow a distinct possibility */
-        inhdr->glen = inhdr->byid+36;
+aw_c *crea_awc(unsigned initsz)
+{
+    int i;
+    aw_c *awc=malloc(sizeof(aw_c));
+    awc->ab=initsz;
+    awc->al=awc->ab;
+    awc->aw=malloc(awc->ab*sizeof(w_c*));
+    for(i=0;i<awc->ab;++i) 
+        awc->aw[i]=crea_wc(CBUF);
+    return awc;
+}
 
-        sprintf(fn, "%s/%03i.wav", tmpd, j); /* purposely only allow FOR 1000 edits */
-        outwavfp= fopen(fn,"wb");
+void reall_awc(aw_c **awc, unsigned buf)
+{
+    int i;
+    aw_c *tawc=*awc;
+    tawc->ab += buf;
+    tawc->al=tawc->ab;
+    tawc->aw=realloc(tawc->aw, tawc->ab*sizeof(aw_c*));
+    for(i=tawc->ab-buf;i<tawc->ab;++i)
+        tawc->aw[i]=crea_wc(CBUF);
+    *awc=tawc;
+    return;
+}
 
-        fwrite(inhdr, sizeof(unsigned char), 44, outwavfp);
+void norm_awc(aw_c **awc)
+{
+    int i;
+    aw_c *tawc=*awc;
+    /* free the individual w_c's */
+    for(i=tawc->al;i<tawc->ab;++i) 
+        free_wc(tawc->aw+i);
+    /* now release the pointers to those freed w_c's */
+    tawc->aw=realloc(tawc->aw, tawc->al*sizeof(aw_c*));
+    *awc=tawc;
+    return;
+}
 
-        fseek(inwavfp, 44+staby, SEEK_SET); /* originally forgot to skip the 44 bytes of the header! */
-        if ( fread(bf, statbyid, sizeof(unsigned char), inwavfp) < 1 ) {
-            printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
+void free_awc(aw_c **awc)
+{
+    int i;
+    aw_c *tawc=*awc;
+    for(i=0;i<tawc->al;++i) 
+        free_wc(tawc->aw+i);
+    free(tawc->aw); /* unbelieveable: I left this out, couldn't find where I leaking the memory! */
+    free(tawc);
+    return;
+}
+
+aaw_c *crea_aawc(unsigned initsz)
+{
+    int i;
+    unsigned lbuf=initsz;
+    aaw_c *aawc=malloc(sizeof(aaw_c));
+    aawc->numl=0;
+    aawc->aaw=malloc(lbuf*sizeof(aw_c*));
+    for(i=0;i<initsz;++i) 
+        aawc->aaw[i]=crea_awc(WABUF);
+    return aawc;
+}
+
+void free_aawc(aaw_c **aw)
+{
+    int i;
+    aaw_c *taw=*aw;
+    for(i=0;i<taw->numl;++i) /* tried to release 1 more, no go */
+        free_awc(taw->aaw+i);
+    free(taw->aaw);
+    free(taw);
+}
+
+float *edlf2arr(aaw_c *aawc) /* convert the floats in an edl to an array */
+{
+    int i, j, k;
+    float *a=malloc(aawc->numl*2*sizeof(float));
+    for(i=0;i<aawc->numl;++i)
+        if(aawc->aaw[i]->al%3) {
+            printf("Error: not a familiar EDL file as its lines anot a multiple of 3. Bailing out.\n");
             exit(EXIT_FAILURE);
         }
-        fwrite(bf, sizeof(unsigned char), statbyid, outwavfp);
-        fclose(outwavfp);
+    k=0;
+    for(i=0;i<aawc->numl;++i) {
+        for(j=0;j<aawc->aaw[i]->al-1;++j) {
+            if(!((3*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
+                continue;
+            a[k++]= atof(aawc->aaw[i]->aw[j]->w);
+        }
     }
-    fclose(inwavfp);
-    free(tmpd);
-    free(bf);
-    free(sampa);
-    free(fn);
-    free(inhdr);
+    return a;
+}
+
+void prtaawcdbg(aaw_c *aawc)
+{
+    int i, j, k;
+    for(i=0;i<aawc->numl;++i) {
+        printf("l.%u(%u): ", i, aawc->aaw[i]->al); 
+        for(j=0;j<aawc->aaw[i]->al;++j) {
+            printf("w_%u: ", j); 
+            if(aawc->aaw[i]->aw[j]->t == NUM) {
+                printf("NUM! "); 
+                continue;
+            } else if(aawc->aaw[i]->aw[j]->t == PNI) {
+                printf("PNI! "); 
+                continue;
+            }
+            for(k=0;k<aawc->aaw[i]->aw[j]->lp1-1; k++)
+                putchar(aawc->aaw[i]->aw[j]->w[k]);
+            printf("/%u ", aawc->aaw[i]->aw[j]->lp1-1); 
+        }
+        printf("\n"); 
+    }
+}
+
+void prtaawcdata(aaw_c *aawc) /* print line and word details, but not the words themselves */
+{
+    int i, j;
+    for(i=0;i<aawc->numl;++i) {
+        printf("L%u(%uw):", i, aawc->aaw[i]->al); 
+        for(j=0;j<aawc->aaw[i]->al;++j) {
+            printf("l%ut", aawc->aaw[i]->aw[j]->lp1-1);
+            switch(aawc->aaw[i]->aw[j]->t) {
+                case NUM: printf("N "); break;
+                case PNI: printf("I "); break;
+                case STR: printf("S "); break;
+            }
+        }
+    }
+    printf("\n"); 
+}
+
+aaw_c *processinpf(char *fname)
+{
+    /* declarations */
+    FILE *fp=fopen(fname,"r");
+    int i;
+    size_t couc /*count chars per line */, couw=0 /* count words */;
+    int c;
+    boole inword=0;
+    unsigned lbuf=LBUF /* buffer for number of lines */, cbuf=CBUF /* char buffer for size of w_c's: reused for every word */;
+    aaw_c *aawc=crea_aawc(lbuf); /* array of words per line */
+
+    while( (c=fgetc(fp)) != EOF) {
+        if( (c== '\n') | (c == ' ') | (c == '\t') ) {
+            if( inword==1) { /* cue word -edning procedure */
+                aawc->aaw[aawc->numl]->aw[couw]->w[couc++]='\0';
+                aawc->aaw[aawc->numl]->aw[couw]->lp1=couc;
+                norm_wc(aawc->aaw[aawc->numl]->aw+couw);
+                couw++; /* verified: this has to be here */
+            }
+            if(c=='\n') { /* cue line-ending procedure */
+                if(aawc->numl ==lbuf-1) {
+                    lbuf += LBUF;
+                    aawc->aaw=realloc(aawc->aaw, lbuf*sizeof(aw_c*));
+                    for(i=lbuf-LBUF; i<lbuf; ++i)
+                        aawc->aaw[i]=crea_awc(WABUF);
+                }
+                aawc->aaw[aawc->numl]->al=couw;
+                norm_awc(aawc->aaw+aawc->numl);
+                aawc->numl++;
+                couw=0;
+            }
+            inword=0;
+        } else if(inword==0) { /* a normal character opens word */
+            if(couw ==aawc->aaw[aawc->numl]->ab-1) /* new word opening */
+                reall_awc(aawc->aaw+aawc->numl, WABUF);
+            couc=0;
+            cbuf=CBUF;
+            aawc->aaw[aawc->numl]->aw[couw]->w[couc++]=c;
+            GETTYPE(c, aawc->aaw[aawc->numl]->aw[couw]->t); /* MACRO: the firt character gives a clue */
+            inword=1;
+        } else if(inword) { /* simply store */
+            if(couc == cbuf-1)
+                reall_wc(aawc->aaw[aawc->numl]->aw+couw, &cbuf);
+            aawc->aaw[aawc->numl]->aw[couw]->w[couc++]=c;
+            /* if word is a candidate for a NUM or PNI (i.e. via its first character), make sure it continues to obey rules: a MACRO */
+            MODTYPEIF(c, aawc->aaw[aawc->numl]->aw[couw]->t);
+        }
+    } /* end of big for statement */
+    fclose(fp);
+
+    /* normalization stage */
+    for(i=aawc->numl; i<lbuf; ++i) {
+        free_awc(aawc->aaw+i);
+    }
+    aawc->aaw=realloc(aawc->aaw, aawc->numl*sizeof(aw_c*));
+
+    return aawc;
+}
+
+int main(int argc, char *argv[])
+{
+    /* argument accounting */
+    if(argc!=3) {
+        printf("Program usage. Two args 1) edl file 2) time shift to apply eg. -.5, move timepoints back by half a second.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int i;
+    aaw_c *aawc=processinpf(argv[1]);
+    float *a=edlf2arr(aawc);
+    char ofn[256]={0};
+    char *dot=strrchr(argv[1], '.');
+    strncpy(ofn,argv[1],dot-argv[1]);
+    strcat(ofn,".timepts");
+
+    FILE *fo=fopen(ofn, "w");
+    float mtpt; /* modified timepoint */
+    unsigned h, m, s;
+    for(i=0;i<aawc->numl*2;++i) {
+        mtpt=a[i]+atof(argv[2]);
+        h=((unsigned)mtpt)/3600;
+        m=((unsigned)(mtpt-h*3600))/60;
+        s=(unsigned)((float)(.5+(mtpt-h*3600-m*60)));
+        // fprintf(fo, (h)? "%d:%02d:%02d\n", h, m, s : "%02d:%02d\n", m, s);
+        if(h)
+            fprintf(fo, "%d:%02d:%02d\n", h, m, s);
+        else
+            fprintf(fo, "%02d:%02d\n", m, s);
+    }
+    fclose(fo);
+
+    free(a);
+    free_aawc(&aawc);
+
     return 0;
 }
