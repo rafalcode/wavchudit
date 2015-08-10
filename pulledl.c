@@ -1,13 +1,21 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <dirent.h> 
+#include<ctype.h>
+#include<unistd.h>
+#include<sys/time.h>
+#include<sys/stat.h>
+#include<dirent.h> 
 #include "genread.h"
 
 #define GBUF 64
 #define WBUF 8
+
+typedef struct  /* optstruct, a struct for the options */
+{
+    int aflg, bflg;
+    char *edlfn;
+} optstruct;
 
 typedef struct /* wh_t: WAV header type */
 {
@@ -24,6 +32,50 @@ typedef struct /* wh_t: WAV header type */
     char datastr[4]; // should always contain "data"
     int byid; // BYtes_In_Data;
 } wh_t; /* wav header type */
+
+void prtusage(void)
+{
+        printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
+        printf("\tCan run with only one argument: Name of wavfile. The edl file will be assumed to have\n");
+        printf("\tto have the same basename, but with the \"edl\" extension.\n");
+        printf("\tDefault usage: segments before first time point and after last timepoint: omitted. Interstitial\n");
+        printf("\tsegments output as files. If \"-a\" switch follows wav filename, segment before first timepoint\n");
+        printf("\twill be output. If \"-b\" is the switch, segment after last time point is also output. These two\n");
+        printf("\tcan be used together\n"); 
+        printf("\tFinally, the \"-e\" switch accepts the name of an edl file\n"); 
+        return;
+}
+
+int catchopts(optstruct *opstru, int oargc, char **oargv)
+{
+    int c;
+    opterr = 0;
+
+    while ((c = getopt (oargc, oargv, "abe:")) != -1)
+        switch (c) {
+            case 'a':
+                opstru->aflg = 1;
+                break;
+            case 'b':
+                opstru->bflg = 1;
+                break;
+            case 'e':
+                opstru->edlfn = optarg;
+                break;
+            case '?':
+                if (optopt == 'e')
+                    fprintf (stderr, "Option -%c requires an argument (name of edl file).\n", optopt);
+                else if (isprint (optopt))
+                    fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+                else
+                    fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+                return 1;
+            default:
+                abort();
+        }
+
+    return 0;
+}
 
 int hdrchkbasic(wh_t *inhdr)
 {
@@ -316,11 +368,17 @@ aaw_c *processinpf(char *fname)
 int main(int argc, char *argv[])
 {
     /* argument accounting */
-    if(argc != 3) {
-        printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-        printf("2 arguments: 1) Name of wavfile. 2) name of edl-file.\n");
+    if(argc == 1) {
+        prtusage();
         exit(EXIT_FAILURE);
     }
+
+    /* options and flags */
+    optstruct opstru={0};
+    int argignore=1;
+    int oargc=argc-argignore;
+    char **oargv=argv+argignore;
+    catchopts(&opstru, oargc, oargv);
 
     /* let's use stat.h to work out size of WAV instead of its header info .. it's more reliable */
     struct stat fsta;
@@ -330,6 +388,7 @@ int main(int argc, char *argv[])
     }
     size_t statglen=fsta.st_size-8;
     size_t tstatbyid=statglen-36; /* total stabyid, because we'll have a "current" stabyid for the chunks */
+    int i, j;
 
     /* open our wav file: we get the header in early that way */
     FILE *inwavfp;
@@ -345,12 +404,21 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    /* will only be used if number of final sample is required
-    size_t totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
-    */
+    size_t totsamps=0;
+    if(opstru.bflg)
+        totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
 
-    int i, j;
-    aaw_c *aawc=processinpf(argv[2]);
+    aaw_c *aawc;
+    if(opstru.edlfn)
+        aawc=processinpf(opstru.edlfn);
+    else {
+        char edlfn[128]={0};
+        char *dptr=strrchr(argv[1], '.');
+        strncpy(edlfn, argv[1], dptr-argv[1]);
+        strcat(edlfn, ".edl");
+        aawc=processinpf(edlfn);
+    }
+
     float *a=edlf2arr(aawc);
 
     /* convert seconds to sample timepts */
@@ -360,7 +428,14 @@ int main(int argc, char *argv[])
     free(a);
 
     /* this version: ignore leading and ending chunk */
-    int chunkquan=2*aawc->numl-1;
+    int chunkquan;
+    if(opstru.aflg && opstru.bflg)
+        chunkquan=2*aawc->numl+1;
+    else if((opstru.aflg) || (opstru.bflg))
+        chunkquan=2*aawc->numl;
+    else
+        chunkquan=2*aawc->numl-1;
+
 #ifdef DBG
     printf("chunkquan is %d\n", chunkquan); 
 #endif
@@ -375,13 +450,19 @@ int main(int argc, char *argv[])
 
     for(j=0;j<chunkquan;++j) {
 
-        /* following for convenvenice to allow variation */
-        /*
+        if(opstru.aflg && opstru.bflg)  {
            frompt = (j==0)? 0: sampa[j-1];
            topt = (j==chunkquan-1)? totsamps: sampa[j];
-           */
-        frompt = sampa[j];
-        topt = sampa[j+1];
+        } else if(opstru.aflg) {
+           frompt = (j==0)? 0: sampa[j-1];
+           topt = sampa[j];
+        } else if(opstru.bflg) {
+           frompt = sampa[j];
+           topt = (j==chunkquan-1)? totsamps: sampa[j+1];
+        } else {
+           frompt = sampa[j];
+           topt = sampa[j+1];
+        }
 
         cstatbyid = (topt - frompt)*byidmultiplier;
         bf=realloc(bf, cstatbyid*sizeof(unsigned char));
