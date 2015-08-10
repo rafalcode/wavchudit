@@ -297,9 +297,6 @@ int main(int argc, char *argv[])
         /* here we revert to wav's limitations on max file size */
         inhdr->byid=(int)cstatbyid; /* overflow a distinct possibility */
         inhdr->glen = inhdr->byid+36;
-        /* experiment */
-        if(j==0)
-            inhdr->bypc=2;
 
         sprintf(fn, "%s/%03i.wav", tmpd, j); /* purposely only allow FOR 1000 edits */
         outwavfp= fopen(fn,"wb");

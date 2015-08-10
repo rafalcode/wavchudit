@@ -318,18 +318,19 @@ int main(int argc, char *argv[])
     /* argument accounting */
     if(argc != 3) {
         printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-        printf("2 arguments: 1) Name of wavfile. 2) name of edl-file.\n"
+        printf("2 arguments: 1) Name of wavfile. 2) name of edl-file.\n");
         exit(EXIT_FAILURE);
-        }
+    }
 
-     /* let's use stat.h to work out size of WAV instead of its header info .. it's more reliable */
+    /* let's use stat.h to work out size of WAV instead of its header info .. it's more reliable */
     struct stat fsta;
     if(stat(argv[1], &fsta) == -1) {
         fprintf(stderr,"Can't open input file %s", argv[2]);
         exit(EXIT_FAILURE);
-        }
+    }
     size_t statglen=fsta.st_size-8;
     size_t tstatbyid=statglen-36; /* total stabyid, because we'll have a "current" stabyid for the chunks */
+
     /* open our wav file: we get the header in early that way */
     FILE *inwavfp;
     inwavfp = fopen(argv[1],"rb");
@@ -344,19 +345,27 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    int i;
+    /* will only be used if number of final sample is required
+    size_t totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
+    */
 
-    aaw_c *aawc=processinpf(argv[1]);
+    int i, j;
+    aaw_c *aawc=processinpf(argv[2]);
     float *a=edlf2arr(aawc);
 
     /* convert seconds to sample timepts */
     size_t *sampa=malloc(aawc->numl*2*sizeof(size_t));
     for(i=0;i<aawc->numl*2;++i)
-            sampa[i]=(size_t)(.5 + ((float)inhdr->sampfq)*a[i]);
+        sampa[i]=(size_t)(.5 + ((float)inhdr->sampfq)*a[i]);
     free(a);
 
     /* this version: ignore leading and ending chunk */
-    int chunkquan=aawc->numl-1;
+    int chunkquan=2*aawc->numl-1;
+#ifdef DBG
+    printf("chunkquan is %d\n", chunkquan); 
+#endif
+    free_aawc(&aawc);
+
     char *tmpd=mktmpd();
     char *fn=calloc(GBUF, sizeof(char));
     unsigned char *bf=NULL;
@@ -364,35 +373,45 @@ int main(int argc, char *argv[])
     size_t frompt, topt, staby, cstatbyid /* current statbyid */;
     int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
 
-    for(j=0;j<chunkquan-1;++j) {
+    for(j=0;j<chunkquan;++j) {
 
         /* following for convenvenice to allow variation */
         /*
-        frompt = (j==0)? 0: sampa[j-1];
-        topt = (j==chunkquan-1)? totsamps: sampa[j];
-        */
+           frompt = (j==0)? 0: sampa[j-1];
+           topt = (j==chunkquan-1)? totsamps: sampa[j];
+           */
         frompt = sampa[j];
         topt = sampa[j+1];
 
-        cstatbyid = (sampatopt - frompt)*byidmultiplier;
+        cstatbyid = (topt - frompt)*byidmultiplier;
+        bf=realloc(bf, cstatbyid*sizeof(unsigned char));
+        staby=frompt*byidmultiplier; /* starting byte */
 
+        /* We reuse the hdr for this particular chunk */
+        inhdr->byid=(int)cstatbyid;
+        inhdr->glen = inhdr->byid+36;
 
+        sprintf(fn, "%s/%03i.wav", tmpd, j); /* no fancy name */
+        outwavfp= fopen(fn,"wb");
 
-    for(i=0;i<aawc->numl*2;++i) {
-        mtpt=a[i]+atof(argv[2]);
-        h=((unsigned)mtpt)/3600;
-        m=((unsigned)(mtpt-h*3600))/60;
-        s=(unsigned)((float)(.5+(mtpt-h*3600-m*60)));
-        // fprintf(fo, (h)? "%d:%02d:%02d\n", h, m, s : "%02d:%02d\n", m, s);
-        if(h)
-            fprintf(fo, "%d:%02d:%02d\n", h, m, s);
-        else
-            fprintf(fo, "%02d:%02d\n", m, s);
+        fwrite(inhdr, sizeof(unsigned char), 44, outwavfp);
+
+        fseek(inwavfp, 44+staby, SEEK_SET); /* originally forgot to skip the 44 bytes of the header! */
+
+        if ( fread(bf, cstatbyid, sizeof(unsigned char), inwavfp) < 1 ) {
+            printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
+            exit(EXIT_FAILURE);
+        }
+        fwrite(bf, sizeof(unsigned char), cstatbyid, outwavfp);
+        fclose(outwavfp);
     }
-    fclose(fo);
-
-    free(a);
-    free_aawc(&aawc);
+    printf("Directory \"%s\" holds the %d extracted files.\n", tmpd, chunkquan); 
+    fclose(inwavfp);
+    free(tmpd);
+    free(bf);
+    free(sampa);
+    free(fn);
+    free(inhdr);
 
     return 0;
 }
