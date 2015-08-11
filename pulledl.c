@@ -35,7 +35,7 @@ typedef struct /* wh_t: WAV header type */
 
 void prtusage(void)
 {
-        printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
+        printf("Usage: divides wav file according to an mplayer-generated EDL file.\n");
         printf("\tCan run with only one argument: Name of wavfile. The edl file will be assumed to have\n");
         printf("\tto have the same basename, but with the \"edl\" extension.\n");
         printf("\tDefault usage: segments before first time point and after last timepoint: omitted. Interstitial\n");
