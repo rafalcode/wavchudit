@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
     inwavfp = fopen(argv[1],"rb");
     /* of course we also need the header for other bits of data */
     wh_t *inhdr=malloc(sizeof(wh_t));
-    if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
+    if ( fread(inhdr, sizeof(wh_t), sizeof(unsigned char), inwavfp) < 1 ) {
         printf("Can't read file header\n");
         exit(EXIT_FAILURE);
     }
