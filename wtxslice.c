@@ -105,70 +105,59 @@ wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chun
     return wh;
 }
 
-int hdrchk(wh_t *inhdr)
+int dhdrchk(wh_t *hdr1, wh_t *hdr2) /* double header check, as well as sanity, they must match nchans, sampfq and bipsamp */
 {
     /* OK .. we test what sort of header we have */
-    if ( inhdr->id[0] != 'R'
-            || inhdr->id[1] != 'I' 
-            || inhdr->id[2] != 'F' 
-            || inhdr->id[3] != 'F' ) { 
-        printf("ERROR: RIFF string problem\n"); 
-        return 1;
-    }
-
-    if ( inhdr->fstr[0] != 'W'
-            || inhdr->fstr[1] != 'A' 
-            || inhdr->fstr[2] != 'V' 
-            || inhdr->fstr[3] != 'E' 
-            || inhdr->fstr[4] != 'f'
-            || inhdr->fstr[5] != 'm' 
-            || inhdr->fstr[6] != 't'
-            || inhdr->fstr[7] != ' ' ) { 
-        printf("ERROR: WAVEfmt string problem\n"); 
-        return 1;
-    }
-
-    if ( inhdr->datastr[0] != 'd'
-            || inhdr->datastr[1] != 'a' 
-            || inhdr->datastr[2] != 't' 
-            || inhdr->datastr[3] != 'a' ) { 
-        printf("WARNING: header \"data\" string does not come up\n"); 
-        return 1;
-    }
-    if ( inhdr->fmtnum != 16 ) {
-        printf("WARNING: fmtnum is %i, while it's better off being %i\n", inhdr->fmtnum, 16); 
-        return 1;
-    }
-    if ( inhdr->pcmnum != 1 ) {
-        printf("WARNING: pcmnum is %i, while it's better off being %i\n", inhdr->pcmnum, 1); 
-        return 1;
-    }
-
-    printf("There substantial evidence in the non-numerical fields of this file's header to think it is a wav file\n");
-
-    printf("glen: %i\n", inhdr->glen);
-    printf("byid: %i\n", inhdr->byid);
-    printf("nchans: %d\n", inhdr->nchans);
-    printf("sampfq: %i\n", inhdr->sampfq);
-    printf("byps: %i\n", inhdr->byps);
-    printf("bypc, bytes by capture (count of data in shorts): %d\n", inhdr->bypc);
-    printf("bipsamp: %d\n", inhdr->bipsamp);
-
-    if(inhdr->glen+8-44 == inhdr->byid)
-        printf("Good, \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", inhdr->byid, inhdr->glen);
-    else {
-        printf("WARNING: glen (%i) and byid (%i)do not show prerequisite normal relation(diff is %i).\n", inhdr->glen, inhdr->byid, inhdr->glen-inhdr->byid); 
-    }
-    // printf("Duration by glen is: %f\n", (float)(inhdr->glen+8-wh_tsz)/(inhdr->nchans*inhdr->sampfq*inhdr->byps));
-    printf("Duration by byps is: %f\n", (float)(inhdr->glen+8-44)/inhdr->byps);
-
-    if( (inhdr->bypc == inhdr->byps/inhdr->sampfq) && (inhdr->bypc == 2) )
-        printf("bypc complies with being 2 and matching byps/sampfq. Data values can therefore be recorded as signed shorts.\n"); 
-
-    if( (inhdr->byps != inhdr->sampfq*inhdr->nchans*(inhdr->bsamp/8))) {
-        printf("Faulty header: byps does not match sampfq*nchans/bisamp/8 (typically 176k for most-common setup).\n"); 
-        printf("Aborting because this program uses byps, sorry.\n");
+    if ( hdr1->id[0] != 'R' || hdr1->id[1] != 'I' || hdr1->id[2] != 'F' || hdr1->id[3] != 'F' ) { 
+        printf("ERROR: RIFF string problem, first wav. Bailing out.\n"); 
         exit(EXIT_FAILURE);
+    }
+    if ( hdr2->id[0] != 'R' || hdr2->id[1] != 'I' || hdr2->id[2] != 'F' || hdr2->id[3] != 'F' ) { 
+        printf("ERROR: RIFF string problem, second wav. Bailing out.\n"); 
+        exit(EXIT_FAILURE);
+    }
+
+    if ( hdr1->fstr[0] != 'W' || hdr1->fstr[1] != 'A' || hdr1->fstr[2] != 'V' || hdr1->fstr[3] != 'E' || hdr1->fstr[4] != 'f' || hdr1->fstr[5] != 'm' || hdr1->fstr[6] != 't' || hdr1->fstr[7] != ' ' ) { 
+        printf("ERROR: WAVEfmt string problem, first wav. Bailing out.\n"); 
+        exit(EXIT_FAILURE);
+    }
+    if ( hdr2->fstr[0] != 'W' || hdr2->fstr[1] != 'A' || hdr2->fstr[2] != 'V' || hdr2->fstr[3] != 'E' || hdr2->fstr[4] != 'f' || hdr2->fstr[5] != 'm' || hdr2->fstr[6] != 't' || hdr2->fstr[7] != ' ' ) { 
+        printf("ERROR: WAVEfmt string problem, second wav. Bailing out.\n"); 
+        exit(EXIT_FAILURE);
+    }
+
+    if ( hdr1->datastr[0] != 'd' || hdr1->datastr[1] != 'a' || hdr1->datastr[2] != 't' || hdr1->datastr[3] != 'a' ) { 
+        printf("WARNING: header \"data\" string does not come up in first wav. Bailing out.\n"); 
+        exit(EXIT_FAILURE);
+    }
+    if ( hdr2->datastr[0] != 'd' || hdr2->datastr[1] != 'a' || hdr2->datastr[2] != 't' || hdr2->datastr[3] != 'a' ) { 
+        printf("WARNING: header \"data\" string does not come up in second wav. Bailing out.\n"); 
+        exit(EXIT_FAILURE);
+    }
+
+    if ( hdr1->fmtnum != 16 ) {
+        printf("WARNING: fmtnum in first wav is %i, it should be %i. Bailing out.\n", hdr1->fmtnum, 16); 
+        exit(EXIT_FAILURE);
+    }
+    if ( hdr2->fmtnum != 16 ) {
+        printf("WARNING: fmtnum in second wav is %i, it should be %i. Bailing out.\n", hdr2->fmtnum, 16); 
+        exit(EXIT_FAILURE);
+    }
+    if ( hdr1->pcmnum != 1 ) {
+        printf("WARNING: pcmnum in first wav is %i, it should be %i. Bailing out.\n", hdr1->pcmnum, 1); 
+        exit(EXIT_FAILURE);
+    }
+    if ( hdr2->pcmnum != 1 ) {
+        printf("WARNING: pcmnum in second wav is %i, it should be %i. Bailing out.\n", hdr2->pcmnum, 1); 
+        exit(EXIT_FAILURE);
+    }
+
+    /* OK, all that meant that they're pretty much wav files, now to check if the correspond. The three most important
+     * parameters are nchans, sampfq and bipsamp */
+
+    if( (hdr1->nchans != hdr2->nchans) | (hdr1->sampfq != hdr2->sampfq) | (hdr1->bipsamp != hdr2->bipsamp) ) {
+       printf("One of either nchans, sampfq or bipsamp did not match up between the two wavs.\n"); 
+       return 1;
     }
     return 0;
 }
@@ -176,109 +165,91 @@ int hdrchk(wh_t *inhdr)
 int main(int argc, char *argv[])
 {
     if(argc != 4) {
-        printf("Usage: divides wav file into equal parts and (if nec) a single unequal part (remainder)\n");
-        printf("Args: 1) Name of first (earlier) wavfile 2) Name of first (later) wavfile 3) mm:ss.hh string.\n");
-        exit(EXIT_FAILURE);
-    }
-    /* parse edit file in very simple terms, that means using scanf */
-    FILE *inwavfp;
-    inwavfp = fopen(argv[2],"rb");
-    if ( inwavfp == NULL ) {
-        fprintf(stderr,"Can't open input file %s", argv[1]);
+        printf("Usage: Transfers the end chunk of one wav and inserts it at beginning of second.\n");
+        printf("3 args: 1) Name of first (earlier) wavfile 2) Name of first (later) wavfile 3) mm:ss.hh string.\n");
         exit(EXIT_FAILURE);
     }
 
-    /* let's use stat.h to work out size of WAV instead of its header info .. it's more reliable */
+    /* OK, we have two wav files, it's important that they have the same sampling and such parameters.
+     * It's going to be a rare case if they don't, but , BUT ... good practice declares that we should.
+     * This means we'll open both at same time. First however, we're goig to stat them using stat.h */
     struct stat fsta;
-    if(stat(argv[1], &fsta) == -1) {
-        fprintf(stderr,"Can't open input file %s", argv[2]);
-        exit(EXIT_FAILURE);
-    }
-    size_t statglen=fsta.st_size-8;
-    size_t tstatbyid=statglen-36;
-
-    /* of course we also need the header for other bits of data */
-    wh_t *inhdr=malloc(sizeof(wh_t));
-    if ( fread(inhdr, sizeof(wh_t), sizeof(unsigned char), inwavfp) < 1 ) {
-        printf("Can't read file header\n");
-        exit(EXIT_FAILURE);
+    size_t tstatbyid[2]={0};
+    int i;
+    for(i=0;i<2;++i) {
+        if(stat(argv[i+1], &fsta) == -1) {
+            fprintf(stderr,"Can't open input file %s", argv[i+1]);
+            exit(EXIT_FAILURE);
+        }
+        tstatbyid[i]=fsta.st_size-44;
     }
 
-    tpt *p=s2tp(argv[1]);
+    /* OK. as yet we don't know if they are decent WAV files, and wther they have the same parameters
+    Note that we open them as a matter of course, because the stat command has already checked for basic file trouble. */
+    FILE *wav1fp = fopen(argv[1],"rb"), *wav2fp = fopen(argv[2],"rb");
+
+    wh_t *hdr1=malloc(sizeof(wh_t)), *hdr2=malloc(sizeof(wh_t));
+    if ( fread(hdr1, sizeof(wh_t), sizeof(unsigned char), wav1fp) < 1 ) {
+        printf("Can't read %s's file header. Bailing out.\n", argv[1]);
+        exit(EXIT_FAILURE);
+    }
+    if ( fread(hdr2, sizeof(wh_t), sizeof(unsigned char), wav2fp) < 1 ) {
+        printf("Can't read %s's file header. Bailing out.\n", argv[2]);
+        exit(EXIT_FAILURE);
+    }
+    if( dhdrchk(hdr1, hdr2)) { /* check both wavheaders, they need to match */
+        printf("Error. Wav header parameter mismatch. Aborting.\n"); 
+        exit(EXIT_FAILURE);
+    }
+
+    tpt *p=s2tp(argv[3]);
 #ifdef DBG
     printf("Specified timept: mins=%d, secs=%d, centisecs=%d\n", p->m, p->s, p->c);
 #endif
-    int calcbyps= inhdr->sampfq*inhdr->nchans*(inhdr->bsamp/8);
+    int calcbyps= hdr1->sampfq*hdr1->nchans*(hdr1->bipsamp/8);
     int point=calcbyps*(p->m*60 + p->s) + p->c*calcbyps/100;
-    if(point >= tstatbyid) {
+    if(point >= tstatbyid[0]) {
         printf("Error. Specified timept comes after length of first (earlier) wav. Aborting.\n");
         exit(EXIT_FAILURE);
     }
-    unsigned char *bf=malloc(tstatbyid);
-    if ( fread(bf, tstatbyid, sizeof(unsigned char), inwavfp) < 1 ) {
-        printf("Sorry, trouble putting input file into array. Aborting\n"); 
+    size_t endslicesz=tstatbyid[0]-point;
+    size_t newwav2sz=tstatbyid[1]+endslicesz;
+    unsigned char *bf=malloc(tstatbyid[0]);
+    if ( fread(bf, tstatbyid[0], sizeof(unsigned char), wav1fp) < 1 ) {
+        printf("Sorry, trouble putting first input file into array. Aborting\n"); 
         exit(EXIT_FAILURE);
     }
-    fclose(inwavfp);
-    /* now we'll write a new, truncated, "earlier" wav */
-    inhdr->glen -= (inhdr->byid - point);
-    inhdr->byid = point;
 
-    /* prepare truncated first(earlier) wavfilename */
-    char outfn[ARBSZ]={0};
-    char *tmpd=mktmpd();
-    strcpy(outfn, tmpd);
-    strcat(outfn, "/");
-    char *perpt=strrchr(argv[1], '.');
-    strncpy(outfn, argv[1], (size_t)(perpt-argv[1]));
-    strcat(outfn, "_trunc.wav");
-    FILE *outwavfp= fopen(outfn,"wb");
+    /* instead of closing the file, we'll rewind and write over, wiht truncated data. Erase that. We'll close and reopen */
+    fclose(wav1fp);
+    wav1fp = fopen(argv[1],"wb");
+    rewind(wav1fp);
+    hdr1->byid = point;
+    hdr1->glen=hdr1->byid+36;
+    fwrite(hdr1, sizeof(unsigned char), 44, wav1fp);
+    fwrite(bf, sizeof(unsigned char), point, wav1fp);
+    fclose(wav1fp);
+    free(hdr1);
 
-    /* prepare new header and write out buffer up to point */
-    inhdr->byid = point;
-    inhdr->glen=inhdr->byid+36;
-    fwrite(inhdr, sizeof(unsigned char), 44, outwavfp);
-    fwrite(bf, sizeof(unsigned char), point, outwavfp);
-    fclose(outwavfp);
-
-    /* memory efficiency: we undergo a memcpy here purely to be able to release bf.
-     * We do this because it could be quite big and we're about to read in a second file */
-    size_t endslicesz=tstatbyid-point;
+    /* another buffer, but let's avoid two big ones open */
     unsigned char *bf2=malloc(endslicesz);
     memcpy(bf2, bf+point, endslicesz); 
     free(bf);
-
-    /* so now we take care of the second wav file, which we're going to prefix */
-    char *fn=calloc(GBUF, sizeof(char));
-    char *bf=malloc(inhdr->byid);
-    FILE *outwavfp;
-
-    int j;
-    for(j=0;j<chunkquan;++j) {
-
-        if( (j==chunkquan-1) && partchunk)
-            inhdr->byid = partchunk;
-        else 
-            inhdr->byid = point;
-        inhdr->glen = inhdr->byid+36;
-
-        sprintf(fn, "%s/%05i.wav", tmpd, j);
-        outwavfp= fopen(fn,"wb");
-
-        fwrite(inhdr, sizeof(char), 44, outwavfp);
-
-        if ( fread(bf, inhdr->byid, sizeof(char), inwavfp) < 1 ) {
-            printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
-            exit(EXIT_FAILURE);
-        }
-        fwrite(bf, sizeof(char), inhdr->byid, outwavfp);
-        fclose(outwavfp);
+    bf2=realloc(bf2, newwav2sz);
+    if ( fread(bf2+endslicesz, tstatbyid[1], sizeof(unsigned char), wav2fp) < 1 ) {
+        printf("Sorry, trouble putting second wav file into array. Aborting\n"); 
+        exit(EXIT_FAILURE);
     }
-    fclose(inwavfp);
-    free(tmpd);
-    free(bf);
-    free(fn);
+    hdr2->byid += endslicesz;
+    hdr2->glen=hdr2->byid+36;
+    fclose(wav2fp);
+    wav2fp = fopen(argv[2],"wb");
+    fwrite(hdr2, sizeof(unsigned char), 44, wav2fp);
+    fwrite(bf2, sizeof(unsigned char), newwav2sz, wav2fp);
+    fclose(wav2fp);
+    free(bf2);
+    free(hdr2);
     free(p);
-    free(inhdr);
+
     return 0;
 }

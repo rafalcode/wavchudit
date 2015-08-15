@@ -1,8 +1,7 @@
 CC=gcc
 CFLAGS=-g -Wall
 
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d
-
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -54,6 +53,10 @@ swavedl: swavedl.c
 	${CC} ${CFLAGS} $^ -o $@
 swavedl_d: swavedl.c
 	${CC} ${CFLAGS} -DDBG $^ -o $@
+
+# transfers endslice of first wav to the beginning of the second
+wtxslice: wtxslice.c
+	${CC} ${CFLAGS} $^ -o $@
 
 # read a playlist: actually just slurps in a file listing as an array of lines treated as strings
 plreader: plreader.c
