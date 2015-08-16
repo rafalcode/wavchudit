@@ -181,12 +181,12 @@ int main(int argc, char *argv[])
 {
     if(argc != 3) {
         printf("Usage: divides wav file into equal parts and (if nec) a single unequal part (remainder)\n");
-        printf("Args: 1) mm:ss.hh string 2) Name of wavfile.\n");
+        printf("Args: 1) Name of wavfile and 2) mm:ss.cc string\n");
         exit(EXIT_FAILURE);
     }
     /* parse edit file in very simple terms, that means using scanf */
     FILE *inwavfp;
-    inwavfp = fopen(argv[2],"rb");
+    inwavfp = fopen(argv[1],"rb");
     if ( inwavfp == NULL ) {
         fprintf(stderr,"Can't open input file %s", argv[1]);
         exit(EXIT_FAILURE);
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    tpt *p=s2tp(argv[1]);
+    tpt *p=s2tp(argv[2]);
 
     printf("stamin=%u, stasec=%u, stahuns=%u\n", p->m, p->s, p->h);
     int point=inhdr->byps*(p->m*60 + p->s) + p->h*inhdr->byps/100;

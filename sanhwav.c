@@ -25,73 +25,68 @@ typedef struct /* wh_t, the wav file header, always 44 bytes in length. */
     int byid; // BYtes_In_Data, should be glen-36;
 } wh_t; /* wav header type */
 
-int hdrchk(wh_t *inhdr, size_t fsz)
+int hdrchk(wh_t *hd, size_t fsz)
 {
     /* OK .. we test what sort of header we have */
-    if ( inhdr->id[0] != 'R'
-            || inhdr->id[1] != 'I' 
-            || inhdr->id[2] != 'F' 
-            || inhdr->id[3] != 'F' ) { 
+    if ( hd->id[0] != 'R' || hd->id[1] != 'I' || hd->id[2] != 'F' || hd->id[3] != 'F' ) { 
+#ifdef DBG
         printf("ERROR: RIFF string problem\n"); 
+#endif
         return 1;
     }
 
-    if ( inhdr->fstr[0] != 'W'
-            || inhdr->fstr[1] != 'A' 
-            || inhdr->fstr[2] != 'V' 
-            || inhdr->fstr[3] != 'E' 
-            || inhdr->fstr[4] != 'f'
-            || inhdr->fstr[5] != 'm' 
-            || inhdr->fstr[6] != 't'
-            || inhdr->fstr[7] != ' ' ) { 
+    if ( hd->fstr[0] != 'W' || hd->fstr[1] != 'A' || hd->fstr[2] != 'V' || hd->fstr[3] != 'E' || hd->fstr[4] != 'f' || hd->fstr[5] != 'm' || hd->fstr[6] != 't' || hd->fstr[7] != ' ' ) { 
+#ifdef DBG
         printf("ERROR: WAVEfmt string problem\n"); 
+#endif
         return 1;
     }
 
-    if ( inhdr->datastr[0] != 'd'
-            || inhdr->datastr[1] != 'a' 
-            || inhdr->datastr[2] != 't' 
-            || inhdr->datastr[3] != 'a' ) { 
+    if ( hd->datastr[0] != 'd' || hd->datastr[1] != 'a' || hd->datastr[2] != 't' || hd->datastr[3] != 'a' ) { 
+#ifdef DBG
         printf("WARNING: header \"data\" string does not come up\n"); 
+#endif
         return 1;
     }
-    if ( inhdr->fmtnum != 16 ) {
-        printf("WARNING: fmtnum is %i, not 16, this may be a compressed file, despite being wav\n", inhdr->fmtnum); 
+    if ( hd->fmtnum != 16 ) {
+#ifdef DBG
+        printf("WARNING: fmtnum is %i, not 16, this may be a compressed file, despite being wav\n", hd->fmtnum); 
+#endif
         return 1;
     }
-    if ( inhdr->pcmnum != 1 ) {
-        printf("WARNING: pcmnum is %i, while it's better off being %i\n", inhdr->pcmnum, 1); 
+    if ( hd->pcmnum != 1 ) {
+        printf("WARNING: pcmnum is %i, while it's better off being %i\n", hd->pcmnum, 1); 
         return 1;
     }
 
     printf("Header first tests fine: id, fstr, datastr, fmtnum and pcmnum all fine\n");
     printf("Further header fields: "); 
-    printf("glen: %i /", inhdr->glen);
-    printf("byid: %i /", inhdr->byid);
-    printf("nchans: %d /", inhdr->nchans);
-    printf("sampfq: %i /", inhdr->sampfq);
-    printf("byps: %i /", inhdr->byps);
-    printf("bypc: %d /", inhdr->bypc);
-    printf("bipsamp: %d\n", inhdr->bipsamp);
+    printf("glen: %i /", hd->glen);
+    printf("byid: %i /", hd->byid);
+    printf("nchans: %d /", hd->nchans);
+    printf("sampfq: %i /", hd->sampfq);
+    printf("byps: %i /", hd->byps);
+    printf("bypc: %d /", hd->bypc);
+    printf("bipsamp: %d\n", hd->bipsamp);
 
-    if(inhdr->glen+8-44 == inhdr->byid)
-        printf("Checked: \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", inhdr->byid, inhdr->glen);
+    if(hd->glen+8-44 == hd->byid)
+        printf("Checked: \"byid\" (%i) is 36 bytes smaller than \"glen\" (%i).\n", hd->byid, hd->glen);
     else {
-        printf("WARNING: glen (%i) and byid (%i)do not show prerequisite normal relation(diff is %i).\n", inhdr->glen, inhdr->byid, inhdr->glen-inhdr->byid); 
+        printf("WARNING: glen (%i) and byid (%i)do not show prerequisite normal relation(diff is %i).\n", hd->glen, hd->byid, hd->glen-hd->byid); 
     }
-    // printf("Duration by glen is: %f\n", (float)(inhdr->glen+8-wh_tsz)/(inhdr->nchans*inhdr->sampfq*inhdr->byps));
-    printf("Duration by byps is: %f\n", (float)(inhdr->glen+8-44)/inhdr->byps);
+    // printf("Duration by glen is: %f\n", (float)(hd->glen+8-wh_tsz)/(hd->nchans*hd->sampfq*hd->byps));
+    printf("Duration by byps is: %f\n", (float)(hd->glen+8-44)/hd->byps);
 
-    if( (inhdr->bypc == inhdr->byps/inhdr->sampfq) && (inhdr->bypc == 2) )
+    if( (hd->bypc == hd->byps/hd->sampfq) && (hd->bypc == 2) )
         printf("bypc complies with being 2 and matching byps/sampfq. Data values can therefore be recorded as signed shorts.\n"); 
 
-    if(inhdr->byid+44 == fsz)
+    if(hd->byid+44 == fsz)
         printf("Checked: header's byid is 44 less than stat.h's reading of file size (%zu).\n", fsz);
     else {
-        printf("WARNING: byid and file's size do not differ by 44 but by is %li.\n", (long)(fsz - (size_t)inhdr->byid));
+        printf("WARNING: byid and file's size do not differ by 44 but by is %li.\n", (long)(fsz - (size_t)hd->byid));
     }
 
-    printf("All good. Playing time in secs %f\n", (float)inhdr->byid/inhdr->byps);
+    printf("All good. Playing time in secs %f\n", (float)hd->byid/hd->byps);
 
     return 0;
 }
