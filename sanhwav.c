@@ -46,7 +46,7 @@ int hdrchk(wh_t *hd, size_t fsz)
 #ifdef DBG
         printf("WARNING: header \"data\" string does not come up\n"); 
 #endif
-        return 1;
+        return 3;
     }
     if ( hd->fmtnum != 16 ) {
 #ifdef DBG
@@ -91,6 +91,16 @@ int hdrchk(wh_t *hd, size_t fsz)
     return 0;
 }
 
+void corrhdda(wh_t *hd) /* forces "data" field in header */
+{
+        hd->datastr[0] = 'd';
+        hd->datastr[1] = 'a';
+        hd->datastr[2] = 't';
+        hd->datastr[3] = 'a';
+
+        return;
+}
+
 int main(int argc, char *argv[])
 {
     if(argc == 1) {
@@ -102,12 +112,13 @@ int main(int argc, char *argv[])
     struct stat fsta;
     FILE *wavfp;
     wh_t *inhdr=malloc(44);
+    int ret;
 
     do {
         if (stat(argv[argidx], &fsta) == -1) /*  remember there is also lstat: it does not follow symlink */
             fprintf(stderr, "%s\n", strerror(errno));
         else {
-            wavfp = fopen(argv[argidx],"rb");
+            wavfp = fopen(argv[argidx],"r+b");
             if ( wavfp == NULL ) {
                 fprintf(stderr,"Can't open input file %s", argv[argidx]);
                 continue;
@@ -117,7 +128,12 @@ int main(int argc, char *argv[])
                 printf("Can't read file header\n");
                 exit(EXIT_FAILURE);
             }
-            hdrchk(inhdr, fsta.st_size);
+            ret=hdrchk(inhdr, fsta.st_size);
+            if(ret==3) {
+                corrhdda(inhdr);
+                rewind(wavfp);
+                fwrite(inhdr, sizeof(char), 44, wavfp);
+            }
         }
         fclose(wavfp);
     } while (argidx++ < argc-2);

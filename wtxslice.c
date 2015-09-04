@@ -8,12 +8,10 @@
 #include <sys/stat.h>
 #include <dirent.h> 
 
-#define GBUF 64
-#define ARBSZ 256
-
 typedef struct /* time point, tpt */
 {
     int m, s, c;
+    unsigned char ref2beg; /* will be positive if timept is referenced to beginning or byte zero of source file */
 } tpt;
 
 typedef struct
