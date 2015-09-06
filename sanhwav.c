@@ -25,38 +25,39 @@ typedef struct /* wh_t, the wav file header, always 44 bytes in length. */
     int byid; // BYtes_In_Data, should be glen-36;
 } wh_t; /* wav header type */
 
-int hdrchk(wh_t *hd, size_t fsz)
+unsigned hdrchk(wh_t *hd, size_t fsz)
 {
+    unsigned ret=0;
     /* OK .. we test what sort of header we have */
     if ( hd->id[0] != 'R' || hd->id[1] != 'I' || hd->id[2] != 'F' || hd->id[3] != 'F' ) { 
 #ifdef DBG
         printf("ERROR: RIFF string problem\n"); 
 #endif
-        return 1;
+        ret |=0x01;
     }
 
     if ( hd->fstr[0] != 'W' || hd->fstr[1] != 'A' || hd->fstr[2] != 'V' || hd->fstr[3] != 'E' || hd->fstr[4] != 'f' || hd->fstr[5] != 'm' || hd->fstr[6] != 't' || hd->fstr[7] != ' ' ) { 
 #ifdef DBG
         printf("ERROR: WAVEfmt string problem\n"); 
 #endif
-        return 1;
+        ret |= 0x02;
     }
 
     if ( hd->datastr[0] != 'd' || hd->datastr[1] != 'a' || hd->datastr[2] != 't' || hd->datastr[3] != 'a' ) { 
 #ifdef DBG
         printf("WARNING: header \"data\" string does not come up\n"); 
 #endif
-        return 3;
+        ret |= 0x04;
     }
-    if ( hd->fmtnum != 16 ) {
+    if ( hd->fmtnum != 16 ) { /* a common other value is 18 */
 #ifdef DBG
         printf("WARNING: fmtnum is %i, not 16, this may be a compressed file, despite being wav\n", hd->fmtnum); 
 #endif
-        return 1;
+        ret |=0x08;
     }
     if ( hd->pcmnum != 1 ) {
         printf("WARNING: pcmnum is %i, while it's better off being %i\n", hd->pcmnum, 1); 
-        return 1;
+        ret |=16;
     }
 
     printf("Header first tests fine: id, fstr, datastr, fmtnum and pcmnum all fine\n");
@@ -93,12 +94,18 @@ int hdrchk(wh_t *hd, size_t fsz)
 
 void corrhdda(wh_t *hd) /* forces "data" field in header */
 {
-        hd->datastr[0] = 'd';
-        hd->datastr[1] = 'a';
-        hd->datastr[2] = 't';
-        hd->datastr[3] = 'a';
+    hd->datastr[0] = 'd';
+    hd->datastr[1] = 'a';
+    hd->datastr[2] = 't';
+    hd->datastr[3] = 'a';
 
-        return;
+    return;
+}
+
+void corrhdfmt(wh_t *hd) /* forces "data" field in header */
+{
+    hd->fmtnum = 16;
+    return;
 }
 
 int main(int argc, char *argv[])
@@ -129,8 +136,11 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
             }
             ret=hdrchk(inhdr, fsta.st_size);
-            if(ret==3) {
-                corrhdda(inhdr);
+            if(ret) {
+                if(ret&8)
+                    corrhdda(inhdr);
+                if(ret&16)
+                    corrhdfmt(inhdr);
                 rewind(wavfp);
                 fwrite(inhdr, sizeof(char), 44, wavfp);
             }
