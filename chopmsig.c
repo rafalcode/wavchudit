@@ -33,13 +33,9 @@ typedef struct
 
 void usage(void)
 {
-        printf("Usage: Transfers the end chunk of one wav and inserts it at beginning of second.\n");
-        printf("3 obligatory args and one optional switch:\n");
-        printf("\t1) Name of first (earlier) wavfile 2) Name of first (later) wavfile 3) mm:ss.hh string.\n");
-        printf("\tThe default mode is to transfer a chunk from first wav file to second, with time referenced\n");
-        printf("\tfrom the end of first wav file (i.e. 5 is from end.\n");
-        printf("\tOptional switch: \"-b\" meaning \"backward\" transfers chunk from second file back to the end of\n");
-        printf("\tthe first. In this case, time point is referenced from beginning of second wavfile.\n"); 
+        printf("Usage: Takes a wav file and chops the most significant bits down to the specified integer.\n");
+        printf("2 obligatory args:\n");
+        printf("\t1) Name of first wavfile 2) integer the number of least significant bits required to be preserved.\n");
 }
 
 tpt *s2tp(char *str) /* maps mins:seconds.centiseconds string into tpt struct: NOTE: a mapping not a conversion */
@@ -278,17 +274,9 @@ void tx(char *wf1, char *wf2, char *timestr, unsigned char backw)
 
 int main(int argc, char *argv[])
 {
-    if((argc != 4) & (argc != 5) ) {
+    if(argc != 3) {
         usage();
         exit(EXIT_FAILURE);
-    }
-    unsigned char backw=0;
-    if(argc == 5) {
-        if(strcmp("-b", argv[4])) {
-            usage();
-            exit(EXIT_FAILURE);
-        } else
-            backw=1;
     }
 
     /* here is how we show the difference in transfer directions, the first wav will always be the shorter one, the donor, so to speak
