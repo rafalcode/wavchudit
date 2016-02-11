@@ -1,4 +1,5 @@
-/*  wtx slice ... forgotten menmonic .. possible wav transfer in slices, most likely */
+/*  chopmsig, mne: "chop most significant": will chop the most significant bits of each sample and render into a 16 bit wav file */
+/* used wtxslice as template */
 
 #include <stdio.h>
 #include <stdlib.h>
