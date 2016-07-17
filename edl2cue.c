@@ -241,9 +241,9 @@ int hdrchkbasic(wh_t *inhdr)
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3) {
-        printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-        printf("2 arguments: 1) Name of wavfile. 2) name of edl-file.\n");
+    if(argc != 2) {
+        printf("Usage: converts an mplayer EDL file into a CUE file.\n");
+        printf("1 argument: name of edl-file.\n");
         exit(EXIT_FAILURE);
     }
     int i, j, k, nr, nc;
@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
 
     /* Read in the edl file: note that the third value is irrelevant for us,
      * it's some sort of marker mplayer puts in */
-    double *mat=processinpf(argv[2], &nr, &nc);
+    double *mat=processinpf(argv[1], &nr, &nc);
     int divby3=(nr*nc)%3;
     if(divby3) {
         printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
@@ -300,9 +300,6 @@ int main(int argc, char *argv[])
 
     int chunkquan=nr*(nc-1)/2;
 
-#ifdef DBG
-    printf("Chunkquan: %d\n", chunkquan); 
-#endif
     char *tmpd=mktmpd();
     char *fn=calloc(GBUF, sizeof(char));
     unsigned char *bf=NULL;

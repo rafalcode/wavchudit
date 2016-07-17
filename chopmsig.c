@@ -111,15 +111,11 @@ wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chun
     return wh;
 }
 
-int dhdrchk(wh_t *hdr1, wh_t *hdr2) /* double header check, as well as sanity, they must match nchans, sampfq and bipsamp */
+int shdrchk(wh_t *hdr1) /* single header check, as well as sanity, they must match nchans, sampfq and bipsamp */
 {
     /* OK .. we test what sort of header we have */
     if ( hdr1->id[0] != 'R' || hdr1->id[1] != 'I' || hdr1->id[2] != 'F' || hdr1->id[3] != 'F' ) { 
         printf("ERROR: RIFF string problem, first wav. Bailing out.\n"); 
-        exit(EXIT_FAILURE);
-    }
-    if ( hdr2->id[0] != 'R' || hdr2->id[1] != 'I' || hdr2->id[2] != 'F' || hdr2->id[3] != 'F' ) { 
-        printf("ERROR: RIFF string problem, second wav. Bailing out.\n"); 
         exit(EXIT_FAILURE);
     }
 
@@ -127,44 +123,22 @@ int dhdrchk(wh_t *hdr1, wh_t *hdr2) /* double header check, as well as sanity, t
         printf("ERROR: WAVEfmt string problem, first wav. Bailing out.\n"); 
         exit(EXIT_FAILURE);
     }
-    if ( hdr2->fstr[0] != 'W' || hdr2->fstr[1] != 'A' || hdr2->fstr[2] != 'V' || hdr2->fstr[3] != 'E' || hdr2->fstr[4] != 'f' || hdr2->fstr[5] != 'm' || hdr2->fstr[6] != 't' || hdr2->fstr[7] != ' ' ) { 
-        printf("ERROR: WAVEfmt string problem, second wav. Bailing out.\n"); 
-        exit(EXIT_FAILURE);
-    }
-
     if ( hdr1->datastr[0] != 'd' || hdr1->datastr[1] != 'a' || hdr1->datastr[2] != 't' || hdr1->datastr[3] != 'a' ) { 
         printf("WARNING: header \"data\" string does not come up in first wav. Bailing out.\n"); 
         exit(EXIT_FAILURE);
     }
-    if ( hdr2->datastr[0] != 'd' || hdr2->datastr[1] != 'a' || hdr2->datastr[2] != 't' || hdr2->datastr[3] != 'a' ) { 
-        printf("WARNING: header \"data\" string does not come up in second wav. Bailing out.\n"); 
-        exit(EXIT_FAILURE);
-    }
-
     if ( hdr1->fmtnum != 16 ) {
         printf("WARNING: fmtnum in first wav is %i, it should be %i. Bailing out.\n", hdr1->fmtnum, 16); 
-        exit(EXIT_FAILURE);
-    }
-    if ( hdr2->fmtnum != 16 ) {
-        printf("WARNING: fmtnum in second wav is %i, it should be %i. Bailing out.\n", hdr2->fmtnum, 16); 
         exit(EXIT_FAILURE);
     }
     if ( hdr1->pcmnum != 1 ) {
         printf("WARNING: pcmnum in first wav is %i, it should be %i. Bailing out.\n", hdr1->pcmnum, 1); 
         exit(EXIT_FAILURE);
     }
-    if ( hdr2->pcmnum != 1 ) {
-        printf("WARNING: pcmnum in second wav is %i, it should be %i. Bailing out.\n", hdr2->pcmnum, 1); 
-        exit(EXIT_FAILURE);
-    }
 
     /* OK, all that meant that they're pretty much wav files, now to check if the correspond. The three most important
      * parameters are nchans, sampfq and bipsamp */
 
-    if( (hdr1->nchans != hdr2->nchans) | (hdr1->sampfq != hdr2->sampfq) | (hdr1->bipsamp != hdr2->bipsamp) ) {
-       printf("One of either nchans, sampfq or bipsamp did not match up between the two wavs.\n"); 
-       return 1;
-    }
     return 0;
 }
 
@@ -174,33 +148,24 @@ void tx(char *wf1, char *wf2, char *timestr, unsigned char backw)
      * It's going to be a rare case if they don't, but , BUT ... good practice declares that we should.
      * This means we'll open both at same time. First however, we're goig to stat them using stat.h */
     struct stat fsta;
-    size_t tstatbyid[2]={0};
+    size_t tstatbyid; /* by id here is bytes in data .. i.e. as calculated by stat */
     if(stat(wf1, &fsta) == -1) {
         fprintf(stderr,"Can't open input file %s", wf1);
         exit(EXIT_FAILURE);
     }
-    tstatbyid[0]=fsta.st_size-44;
-    if(stat(wf2, &fsta) == -1) {
-        fprintf(stderr,"Can't open input file %s", wf2);
-        exit(EXIT_FAILURE);
-    }
-    tstatbyid[1]=fsta.st_size-44;
+    tstatbyid=fsta.st_size-44;
 
     /* OK. as yet we don't know if they are decent WAV files, and wther they have the same parameters
        Note that we open them as a matter of course, because the stat command has already checked for basic file trouble. */
-    FILE *wav1fp = fopen(wf1,"rb"), *wav2fp = fopen(wf2,"rb");
+    FILE *wav1fp = fopen(wf1,"rb");
 
-    wh_t *hdr1=malloc(sizeof(wh_t)), *hdr2=malloc(sizeof(wh_t));
+    wh_t *hdr1=malloc(sizeof(wh_t));
     if ( fread(hdr1, sizeof(wh_t), sizeof(unsigned char), wav1fp) < 1 ) {
         printf("Can't read %s's file header. Bailing out.\n", wf1);
         exit(EXIT_FAILURE);
     }
-    if ( fread(hdr2, sizeof(wh_t), sizeof(unsigned char), wav2fp) < 1 ) {
-        printf("Can't read %s's file header. Bailing out.\n", wf2);
-        exit(EXIT_FAILURE);
-    }
-    if( dhdrchk(hdr1, hdr2)) { /* check both wavheaders, they need to match */
-        printf("Error. Wav header parameter mismatch. Aborting.\n"); 
+    if( shdrchk(hdr1)) { /* check both wavheaders, they need to match */
+        printf("Error. Wav header parameter malformed. Aborting.\n"); 
         exit(EXIT_FAILURE);
     }
     /* with that check done we can just choose any of the two to calculate a robust byps */

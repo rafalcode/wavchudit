@@ -300,9 +300,6 @@ int main(int argc, char *argv[])
 
     int chunkquan=nr*(nc-1)/2;
 
-#ifdef DBG
-    printf("Chunkquan: %d\n", chunkquan); 
-#endif
     char *tmpd=mktmpd();
     char *fn=calloc(GBUF, sizeof(char));
     unsigned char *bf=NULL;

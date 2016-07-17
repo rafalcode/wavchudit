@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -Wall
 
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -61,6 +61,14 @@ wtxslice: wtxslice.c
 # read a playlist: actually just slurps in a file listing as an array of lines treated as strings
 plreader: plreader.c
 	${CC} ${CFLAGS} $^ -o $@
+
+# routime: rough time
+routim: routim.c
+	${CC} ${CFLAGS} -o $@ $^
+routim_d: routim.c
+	${CC} ${CFLAGS} -DDBG -o $@ $^
+routim_dd: routim.c
+	${CC} ${CFLAGS} -DDBG -DDBG2 -o $@ $^
 
 .PHONY: clean
 

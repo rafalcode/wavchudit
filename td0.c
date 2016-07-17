@@ -1,4 +1,4 @@
-/* Takes a wav file and an mplayer-generated edl file and extracts the chunks */
+/* Tedious attempt akes a wav file and an mplayer-generated edl file and extracts the chunks */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,9 +8,6 @@
 #include <sys/stat.h>
 #include <dirent.h> 
 
-#define MXINTV 0x7FFFFFFF /* max int value */
-
-#define ARBSZ 128
 #define GBUF 64
 #define WBUF 8
 
@@ -170,33 +167,6 @@ char *mktmpd(void)
     return myt;
 }
 
-long fszfind(FILE *fp)
-{
-    rewind(fp);
-    fseek(fp, 0, SEEK_END);
-    long fbytsz = ftell(fp);
-    rewind(fp);
-    return fbytsz;
-}
-
-wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chunk of certain siez */
-{
-    wh_t *wh=malloc(sizeof(wh_t));
-    strncpy(wh->id, "RIFF", 4);
-    strncpy(wh->fstr, "WAVEfmt ", 8);
-    strncpy(wh->datastr, "data", 4);
-    wh->fmtnum=16;
-    wh->pcmnum=1;
-    wh->nchans=nucha; /* fed in to function */
-    wh->sampfq=sfre; /* fed in to function */
-    wh->glen=certainsz-8;
-    wh->bipsamp=16;
-    wh->bypc=wh->bipsamp/8;
-    wh->byps=wh->nchans*wh->sampfq*wh->bypc;
-    wh->byid=wh->glen-36;
-    return wh;
-}
-
 int hdrchkbasic(wh_t *inhdr)
 {
     /* OK .. we test what sort of header we have */
@@ -241,87 +211,16 @@ int hdrchkbasic(wh_t *inhdr)
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3) {
-        printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-        printf("2 arguments: 1) Name of wavfile. 2) name of edl-file.\n");
+    if(argc != 2) {
+        printf("Generates a temporary directories and creates a certain number of files inside it.\n");
         exit(EXIT_FAILURE);
     }
-    int i, j, k, nr, nc;
-    /* we expect som pretty big wavs so we can't rely on byid and gleni:
-     * let's use stat.h to work them out instead */
-    struct stat fsta;
-    if(stat(argv[1], &fsta) == -1) {
-        fprintf(stderr,"Can't open input file %s", argv[2]);
-        exit(EXIT_FAILURE);
-    }
-    size_t statglen=fsta.st_size-8;
-    size_t statbyid=statglen-36;
-    /* open our wav file: we get the header in early that way */
-    FILE *inwavfp;
-    inwavfp = fopen(argv[1],"rb");
-    /* of course we also need the header for other bits of data */
-    wh_t *inhdr=malloc(sizeof(wh_t));
-    if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
-        printf("Can't read file header\n");
-        exit(EXIT_FAILURE);
-    }
-    if (hdrchkbasic(inhdr)) {
-        printf("Header failed some basic WAV/RIFF file checks.\n");
-        exit(EXIT_FAILURE);
-    }
+    int j, nsplfilez=atoi(argv[1]);
 
-    /* Read in the edl file: note that the third value is irrelevant for us,
-     * it's some sort of marker mplayer puts in */
-    double *mat=processinpf(argv[2], &nr, &nc);
-    int divby3=(nr*nc)%3;
-    if(divby3) {
-        printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
-        exit(EXIT_FAILURE);
-    }
-#ifdef DBG
-    printf("nr: %d nc: %d\n", nr, nc); 
-#endif
-    int sampasz=nr*(nc-1); /* we get rid of one colum: mne: samp-pt array size */
-    size_t *sampa=malloc(sampasz*sizeof(size_t));
-    k=0;
-    for(i=0;i<nr;++i) 
-        for(j=0;j<nc;++j) {
-            if(!((nc*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
-                continue;
-#ifdef DBG
-          printf("%d ", (nc*i+j+1)%3); 
-#endif
-            sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[nc*i+j]);
-        }
-    free(mat); /* we've rendered the edl matrix into a integers now, as in sampa */
-#ifdef DBG
-    printf("\n"); 
-#endif
-
-    int chunkquan=nr*(nc-1)/2;
-
-#ifdef DBG
-    printf("Chunkquan: %d\n", chunkquan); 
-#endif
     char *tmpd=mktmpd();
-    char *fn=calloc(GBUF, sizeof(char));
-    unsigned char *bf=NULL;
     FILE *outwavfp;
-    int stai, endi;
-    size_t staby;
-    int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
 
-    for(j=0;j<chunkquan;++j) { /* note we will reuse the inhdr, only changing byid and glen */
-
-        endi=2*j+1; /* end index */
-        stai=2*j; /* start index */
-        statbyid = (sampa[endi] - sampa[stai])*byidmultiplier;
-        bf=realloc(bf, statbyid*sizeof(unsigned char));
-        staby=sampa[stai]*byidmultiplier;
-
-        /* here we revert to wav's limitations on max file size */
-        inhdr->byid=(int)statbyid; /* overflow a distinct possibility */
-        inhdr->glen = inhdr->byid+36;
+    for(j=0;j<nsplfilez;++j) { /* up to number of split files */
 
         sprintf(fn, "%s/%03i.wav", tmpd, j); /* purposely only allow FOR 1000 edits */
         outwavfp= fopen(fn,"wb");
@@ -329,11 +228,15 @@ int main(int argc, char *argv[])
         fwrite(inhdr, sizeof(unsigned char), 44, outwavfp);
 
         fseek(inwavfp, 44+staby, SEEK_SET); /* originally forgot to skip the 44 bytes of the header! */
-        if ( fread(bf, statbyid, sizeof(unsigned char), inwavfp) < 1 ) {
+#ifdef DBG
+        printf("ftell: %li ftell+cstatbyid: %li\n", ftell(inwavfp), cstatbyid+ftell(inwavfp)); 
+
+#endif
+        if ( fread(bf, cstatbyid, sizeof(unsigned char), inwavfp) < 1 ) {
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
         }
-        fwrite(bf, sizeof(unsigned char), statbyid, outwavfp);
+        fwrite(bf, sizeof(unsigned char), cstatbyid, outwavfp);
         fclose(outwavfp);
     }
     fclose(inwavfp);
