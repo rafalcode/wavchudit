@@ -70,6 +70,11 @@ routim_d: routim.c
 routim_dd: routim.c
 	${CC} ${CFLAGS} -DDBG -DDBG2 -o $@ $^
 
+# just read the frigging edl's
+# don't forget mplayer will not use edl's if it's not video
+redl: redl.c
+	${CC} ${CFLAGS} -o $@ $^
+
 .PHONY: clean
 
 clean:
