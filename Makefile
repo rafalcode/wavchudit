@@ -62,7 +62,7 @@ wtxslice: wtxslice.c
 plreader: plreader.c
 	${CC} ${CFLAGS} $^ -o $@
 
-# routime: rough time
+# routime: rough time getting time poitns out of rough text
 routim: routim.c
 	${CC} ${CFLAGS} -o $@ $^
 routim_d: routim.c

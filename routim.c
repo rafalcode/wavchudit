@@ -215,10 +215,20 @@ void ttypeascue(char *fname, char *audext, timetype *ttypes, size_t sz)
 
     if(!strcmp("m4a", audext))
         strcpy(xt, "M4A");
+    else if(!strcmp("M4A", audext))
+        strcpy(xt, "M4A");
+    else if(!strcmp("MP3", audext))
+        strcpy(xt, "MP3");
     else if(!strcmp("mp3", audext))
         strcpy(xt, "MP3");
     else if(!strcmp("wav", audext))
         strcpy(xt, "WAV");
+    else if(!strcmp("WAV", audext))
+        strcpy(xt, "WAV");
+    else if(!strcmp("OGG", audext))
+        strcpy(xt, "OGG");
+    else if(!strcmp("ogg", audext))
+        strcpy(xt, "OGG");
     else {
         printf("Error. Invalid audio extension.\n");
         exit(EXIT_FAILURE);
