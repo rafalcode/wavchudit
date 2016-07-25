@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-g -Wall
-
+LIBSMP3=-lmp3splt
 EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
@@ -74,6 +74,9 @@ routim_dd: routim.c
 # don't forget mplayer will not use edl's if it's not video
 redl: redl.c
 	${CC} ${CFLAGS} -o $@ $^
+
+mymin: mymin.c
+	${CC} ${CFLAGS} -o $@ $^ $(LIBSMP3)
 
 .PHONY: clean
 
