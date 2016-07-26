@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 
   splt_code error = SPLT_OK;
 
-  //initialisation of the main state
+  //initialisation of the main state, the main activity container, so to speak.
   splt_state *state = mp3splt_new_state(NULL);
 
   //register callback functions

@@ -42,6 +42,12 @@ and I'm sure other tools actually do the same as this
 this is not a player of wav-files, nor does it enable timings. I recomend sox or mplayer for these tasks.
 Before you edit wav-files you definitely will have needed to analyse them with this tools.
 
+# libmp3splt
+this library is capable of also splitting flac and ogg, but, even in hte case of mp3, plugins are required, which are often held in separate packages (in Debian for example).
+mymin.c renamed from minimal.c is actually the only example included in the source package for this library, but in fact it is enough to get going. My only suspicion with
+this library is how off the time points are going to be in relation to mplayer timings.
+
+
 # components
 * sanhwav: sanity check of wav-file's header only. To see if the header is well-formed.
 * beglop: lop off the beginning of a wav file. will output the end part of file. Original file left intact.
