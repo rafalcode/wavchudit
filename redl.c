@@ -158,9 +158,13 @@ int main(int argc, char *argv[])
         printf("2 arguments: 1) name of edl-file. 2) target mp3, ogg or flac.\n");
         exit(EXIT_FAILURE);
     }
-    char *ext=strrchr(argv[2],'.')+1;
+    char *ext=strrchr(argv[2],'.')+1; // mp3splt will add this anyway
     char cmd[256]={0};
-    char *cmd0="mp3splt";
+    char cmd0[16]={0};
+    if(!strcmp(ext,"ogg"))
+        strcpy(cmd0,"oggsplt");
+    else if(!strcmp(ext,"mp3"))
+        strcpy(cmd0,"mp3splt");
     int i, j, nr, nc, mins;
     float rsecs;
     double *mat=processinpf(argv[1], &nr, &nc);
@@ -183,7 +187,8 @@ int main(int argc, char *argv[])
             strcpy(cmd,cmd0);
             mins=(int)(mat[nc*i+j]/60.0);
             rsecs=mat[nc*i+j]-mins*60.0;
-            sprintf(cmd,"%s %s %02d.%05.2f %02d.%05.2f -o %s/%03d.%3s", cmd0, argv[2], mins0, rsecs0, mins, rsecs, tmpd, k, ext);
+            sprintf(cmd,"%s %s %02d.%05.2f %02d.%05.2f -d %s -o %03d", cmd0, argv[2], mins0, rsecs0, mins, rsecs, tmpd, k);
+            // real problems gettimg mp3splt to accept and output situation.
             printf("%s\n", cmd);
             system(cmd);
             k++;
@@ -192,8 +197,7 @@ int main(int argc, char *argv[])
         }
     }
     // The last one
-    sprintf(cmd,"%s %02d.%05.2f %s %s", cmd0, mins0, rsecs0, "EOF", argv[2]);
-    sprintf(cmd,"%s %s %02d.%05.2f %s -o %s/%03d.%3s", cmd0, argv[2], mins0, rsecs0, "EOF", tmpd, k, ext);
+    sprintf(cmd,"%s %s %02d.%05.2f %s -o %03d", cmd0, argv[2], mins0, rsecs0, "EOF", k);
     printf("%s\n", cmd);
     system(cmd);
 
