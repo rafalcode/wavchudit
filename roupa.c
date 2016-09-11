@@ -1,4 +1,4 @@
-/* Takes an edl file and extracts the chunks */
+/* ROugh time file parser */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,59 +8,13 @@
 #include <sys/stat.h>
 #include <dirent.h> 
 
+#define MXINTV 0x7FFFFFFF /* max int value */
+
+#define ARBSZ 128
 #define GBUF 64
 #define WBUF 8
 
 typedef unsigned char boole;
-
-typedef struct /* wseq_t */
-{
-    size_t *wln;
-    size_t wsbuf;
-    size_t quan;
-    size_t lbuf;
-    size_t numl;
-    size_t *wpla; /* words per line array number of words per line */
-} wseq_t;
-
-wseq_t *create_wseq_t(size_t initsz)
-{
-    wseq_t *words=malloc(sizeof(wseq_t));
-    words->wsbuf = initsz;
-    words->quan = initsz;
-    words->wln=calloc(words->wsbuf, sizeof(size_t));
-    words->lbuf=WBUF;
-    words->numl=0;
-    words->wpla=calloc(words->lbuf, sizeof(size_t));
-    return words;
-}
-
-char *mktmpd(void)
-{
-    struct timeval tsecs;
-    gettimeofday(&tsecs, NULL);
-    char *myt=calloc(14, sizeof(char));
-    strncpy(myt, "tmpdir_", 7);
-    sprintf(myt+7, "%lu", tsecs.tv_usec);
-
-    DIR *d;
-    while((d = opendir(myt)) != NULL) { /* see if a directory witht the same name exists ... very low likelihood though */
-        gettimeofday(&tsecs, NULL);
-        sprintf(myt+7, "%lu", tsecs.tv_usec);
-        closedir(d);
-    }
-    closedir(d);
-    mkdir(myt, S_IRWXU);
-
-    return myt;
-}
-
-void free_wseq(wseq_t *wa)
-{
-    free(wa->wln);
-    free(wa->wpla);
-    free(wa);
-}
 
 double *processinpf(char *fname, int *m, int *n)
 {
@@ -118,7 +72,7 @@ double *processinpf(char *fname, int *m, int *n)
             bufword=realloc(bufword, bwbuf*sizeof(char)); /* don't bother with memset, it's not necessary */
             bufword[couc++]=c; /* no need to check here, it's the first character */
             inword=1;
-        } else if( (c == 0x2E) | ((c >= 0x30) && (c <= 0x39)) ) {
+        } else if( (c == 0x2E) | (c == 0x30) | ((c >= 0x30) && (c <= 0x39)) ) {
             if(couc == bwbuf-1) { /* the -1 so that we can always add and extra (say 0) when we want */
                 bwbuf += WBUF;
                 bufword = realloc(bufword, bwbuf*sizeof(char));
@@ -153,50 +107,21 @@ double *processinpf(char *fname, int *m, int *n)
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3) {
-        printf("Usage: reads an edl file and outputs in several formats.\n");
-        printf("2 arguments: 1) name of edl-file. 2) target mp3, ogg or flac.\n");
+    if(argc != 2) {
+        printf("Usage: converts an mplayer EDL file into a CUE file.\n");
+        printf("1 argument: name of edl-file.\n");
         exit(EXIT_FAILURE);
     }
-    char *ext=strrchr(argv[2],'.')+1;
-    char cmd[256]={0};
-    char *cmd0="mp3splt";
-    int i, j, nr, nc, mins;
-    float rsecs;
-    double *mat=processinpf(argv[1], &nr, &nc);
-    int divby3=(nr*nc)%3;
-    if(divby3) {
-        printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
-        exit(EXIT_FAILURE);
-    }
-#ifdef DBG
-    printf("nr: %d nc: %d\n", nr, nc); 
-#endif
-    int mins0=0;
-    float rsecs0=.0;
-    char *tmpd=mktmpd();
-    int k=0;
-    for(i=0;i<nr;++i) {
-        for(j=0;j<nc;++j) {
-            if(!((nc*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
-                continue;
-            strcpy(cmd,cmd0);
-            mins=(int)(mat[nc*i+j]/60.0);
-            rsecs=mat[nc*i+j]-mins*60.0;
-            sprintf(cmd,"%s %s %02d.%05.2f %02d.%05.2f -o %s/%03d.%3s", cmd0, argv[2], mins0, rsecs0, mins, rsecs, tmpd, k, ext);
-            printf("%s\n", cmd);
-            system(cmd);
-            k++;
-            mins0=mins;
-            rsecs0=rsecs;
-        }
-    }
-    // The last one
-    sprintf(cmd,"%s %02d.%05.2f %s %s", cmd0, mins0, rsecs0, "EOF", argv[2]);
-    sprintf(cmd,"%s %s %02d.%05.2f %s -o %s/%03d.%3s", cmd0, argv[2], mins0, rsecs0, "EOF", tmpd, k, ext);
-    printf("%s\n", cmd);
-    system(cmd);
+    int nr=0, nc=0;
 
-    free(mat); /* we've rendered the edl matrix into a integers now, as in sampa */
-    return 0;
+    /* Read in the rough-time file */
+    double *mat=processinpf(argv[1], &nr, &nc);
+    if(nc !=1) {
+        printf("Error: the rought text file must only have one column. Bailing out.\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("nr: %d nc: %d\n", nr, nc); 
+    free(mat)
+
+    return 0,
 }

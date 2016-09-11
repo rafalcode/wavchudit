@@ -44,6 +44,22 @@ static void print_split_filename(const char *filename, void *data) //Callback fu
 
 int main(int argc, char *argv[])
 {
+    /* notes.
+     * looking for total time I'm sure .... it in splt_struct: long total_time
+     * that's found as split in _splt_state
+     * note underscore.
+     * where is it normalised?
+     * found in include/libmp3splt.h
+     * typedef struct _splt_state splt_state;
+     * However this is a very OO type c code
+     * claim to have private var and funcs.
+     * maybe that total timeis not allowed. 
+     * Need to "get" it
+     */
+
+
+
+
   if (argc != 2) {
     fprintf(stderr, "Please provide the input file to be split as the first argument.\n");
     fflush(stderr);
@@ -66,6 +82,8 @@ int main(int argc, char *argv[])
   //set the input filename to be split
   mp3splt_set_filename_to_split(state, argv[1]);
 
+  splt_struct *m=state->split;
+  // printf("tt: %li\n", state->split->total_time); 
   //append two splitpoints
   splt_point *first_point = mp3splt_point_new(0, NULL);
   mp3splt_append_splitpoint(state, first_point);

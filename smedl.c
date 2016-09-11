@@ -169,9 +169,8 @@ static void print_split_filename(const char *filename, void *data) //Callback fu
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3) {
+    if(argc != 2) {
         printf("Usage: reads an edl file and outputs in several formats.\n");
-        printf("1st argument: {mp3,ogg,flac} file 2) name of edl-file.\n");
         exit(EXIT_FAILURE);
     }
     int i, j, nr, nc, mins;

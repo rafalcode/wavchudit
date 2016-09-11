@@ -75,6 +75,9 @@ routim_dd: routim.c
 redl: redl.c
 	${CC} ${CFLAGS} -o $@ $^
 
+smedl: smedl.c
+	${CC} ${CFLAGS} -o $@ $^
+
 mymin: mymin.c
 	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
 
