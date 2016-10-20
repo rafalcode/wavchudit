@@ -18,7 +18,7 @@ catwav: catwav.c
 beglop: beglop.c
 	${CC} ${CFLAGS} $^ -o $@
 
-# xbeglop is a tougher form, whereby the dicarded data is actually saved onto the original file. It is therefore destructive.
+# xbeglop is a tougher form, whereby the discarded data is actually saved onto the original file. It is therefore destructive.
 xbeglop: xbeglop.c
 	${CC} ${CFLAGS} $^ -o $@
 
@@ -27,6 +27,11 @@ endlop: endlop.c
 
 # split wavs to a tmpdir according to chunks sized in mm:ss.huns format.
 spwav2d: spwav2d.c
+	${CC} ${CFLAGS} $^ -o $@
+
+# This is a special one ... built for 32 sample 2 channel wavs which really are mono (historic recordings). 
+# Idea is to reduce samples to 16 via samp>>16 and get rid of one of the channels. SO it's spMwav2d
+spmwav2d: spmwav2d.c
 	${CC} ${CFLAGS} $^ -o $@
 
 # split wavs according to a level
