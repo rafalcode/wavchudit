@@ -184,15 +184,28 @@ int main(int argc, char *argv[])
         printf("Args: 1) Name of wavfile and 2) mm:ss.cc string\n");
         exit(EXIT_FAILURE);
     }
-    /* parse edit file in very simple terms, that means using scanf */
+    /* Before opening, let's use stat on the wav file */
+    struct stat fsta;
+    if(stat(argv[1], &fsta) == -1) {
+        fprintf(stderr,"Can't stat input file %s", argv[2]);
+        exit(EXIT_FAILURE);
+    }
+    size_t statglen=fsta.st_size-8;
+    size_t statbyid=statglen-36;
+
     FILE *inwavfp;
     inwavfp = fopen(argv[1],"rb");
     if ( inwavfp == NULL ) {
         fprintf(stderr,"Can't open input file %s", argv[1]);
         exit(EXIT_FAILURE);
     }
-    /* Normally you would use the byid for file size, but expecting that the files we get are to big, w're going to use file size instead */
-    long iwsz=fszfind(inwavfp);
+
+    if(statbyid%2 != 0)
+        printf("statbyid is even, good.\n"); 
+    else {
+        printf("Ooops statbyid is not even.\n"); 
+        exit(EXIT_FAILURE);
+    }
 
     /* of course we also need the header for other bits of data */
     wh_t *inhdr=malloc(sizeof(wh_t));
@@ -220,29 +233,36 @@ int main(int argc, char *argv[])
     char *bf=malloc(inhdr->byid);
     FILE *outwavfp;
 
+    /* we're also going to mono ize and reduce 32 bit samples to 16, so modify the header */
+    wh_t *outhdr=malloc(sizeof(wh_t));
+    memcpy(outhdr, inhdr, 44*sizeof(char));
+    outhdr->nchans = 1;
+    outhdr->bipsamp=16;
+    outhdr->bypc=outhdr->bipsamp/8;
+    outhdr->byps = outhdr->nchans * outhdr->sampfq * outhdr->bypc;
     int j;
     for(j=0;j<chunkquan;++j) {
 
         if( (j==chunkquan-1) && partchunk)
-            inhdr->byid = partchunk;
+            outhdr->byid = partchunk/4;
         else 
-            inhdr->byid = point;
-        inhdr->glen = inhdr->byid+36;
+            outhdr->byid = point/4;
+        outhdr->glen = outhdr->byid+36;
 
         sprintf(fn, "%s/%05i.wav", tmpd, j);
         outwavfp= fopen(fn,"wb");
 
-        fwrite(inhdr, sizeof(char), 44, outwavfp);
+        fwrite(outhdr, sizeof(char), 44, outwavfp);
 
         if ( fread(bf, inhdr->byid, sizeof(char), inwavfp) < 1 ) {
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
         }
         newby
-        for(i=0;i<inhdr->byid/2;++i) 
-            bf[i]=bf[i]>>16;
+            for(i=0;i<inhdr->byid/2;++i) 
+                bf[i]=bf[i]>>16;
         bf
-        fwrite(bf, sizeof(char), inhdr->byid, outwavfp);
+            fwrite(bf, sizeof(char), inhdr->byid, outwavfp);
         fclose(outwavfp);
     }
     fclose(inwavfp);
