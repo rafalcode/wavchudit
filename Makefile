@@ -31,6 +31,7 @@ spwav2d: spwav2d.c
 
 # This is a special one ... built for 32 sample 2 channel wavs which really are mono (historic recordings). 
 # Idea is to reduce samples to 16 via samp>>16 and get rid of one of the channels. SO it's spMwav2d
+# Report: I tried this "small" change. No errors were thrown ... but all I get is very low static.
 spmwav2d: spmwav2d.c
 	${CC} ${CFLAGS} $^ -o $@
 

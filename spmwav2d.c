@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    if(statbyid%2 != 0)
+    if(statbyid%2 == 0)
         printf("statbyid is even, good.\n"); 
     else {
         printf("Ooops statbyid is not even.\n"); 
@@ -222,9 +222,11 @@ int main(int argc, char *argv[])
         printf("Timepoint at which to lop is over the size of the wav file. Aborting.\n");
         exit(EXIT_FAILURE);
     }
+    long iwsz=fszfind(inwavfp);
     int fullchunkz=(iwsz-44)/point;
     int partchunk= ((iwsz-44)%point);
     int chunkquan=(partchunk==0)? fullchunkz : fullchunkz+1;
+    int bytesinchunk;
 
     printf("Point is %i and is %li times plus %.1f%% over.\n", point, (iwsz-44)/point, ((iwsz-44)%point)*100./point);
 
@@ -240,13 +242,16 @@ int main(int argc, char *argv[])
     outhdr->bipsamp=16;
     outhdr->bypc=outhdr->bipsamp/8;
     outhdr->byps = outhdr->nchans * outhdr->sampfq * outhdr->bypc;
-    int j;
+    int i, j;
     for(j=0;j<chunkquan;++j) {
 
-        if( (j==chunkquan-1) && partchunk)
+        if( (j==chunkquan-1) && partchunk) {
+            bytesinchunk = partchunk;
             outhdr->byid = partchunk/4;
-        else 
+        } else { 
+            bytesinchunk = point;
             outhdr->byid = point/4;
+        }
         outhdr->glen = outhdr->byid+36;
 
         sprintf(fn, "%s/%05i.wav", tmpd, j);
@@ -254,15 +259,14 @@ int main(int argc, char *argv[])
 
         fwrite(outhdr, sizeof(char), 44, outwavfp);
 
-        if ( fread(bf, inhdr->byid, sizeof(char), inwavfp) < 1 ) {
+        /* EXCUSE ME: are you seriously telling you are reading the entire input file for each chunkquan? */
+        if ( fread(bf, bytesinchunk, sizeof(char), inwavfp) < 1 ) {
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
         }
-        newby
-            for(i=0;i<inhdr->byid/2;++i) 
-                bf[i]=bf[i]>>16;
-        bf
-            fwrite(bf, sizeof(char), inhdr->byid, outwavfp);
+        for(i=0;i<bytesinchunk;i++) 
+            bf[i/2]=bf[i]>>16;
+        fwrite(bf, sizeof(char), outhdr->byid, outwavfp);
         fclose(outwavfp);
     }
     fclose(inwavfp);
@@ -271,5 +275,6 @@ int main(int argc, char *argv[])
     free(fn);
     free(p);
     free(inhdr);
+    free(outhdr);
     return 0;
 }
