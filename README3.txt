@@ -10,3 +10,11 @@ high quality.
 
 Interestingly the xbeglo was not that easy to do. I've come across this before, the file beginning
 and ending are filsystem things. Yout can't cut down a file to a certain size so easily
+
+
+As I was gettigng closer to using libmp3splt and EDL
+I noticed that EDL was gettign reported back as long.
+
+I mean, the raw EDL is quite clearly float. WHy do long? 
+
+I mean, you really need an explanation for that.

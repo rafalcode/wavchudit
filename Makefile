@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -Wall
 LIBSMP3=-lmp3splt
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -81,8 +81,9 @@ routim_dd: routim.c
 redl: redl.c
 	${CC} ${CFLAGS} -o $@ $^
 
+# this one here seems to just output the edl contents in more flexible format
 smedl: smedl.c
-	${CC} ${CFLAGS} -o $@ $^
+	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
 
 mymin: mymin.c
 	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}

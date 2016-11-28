@@ -43,7 +43,7 @@ void free_wseq(wseq_t *wa)
     free(wa);
 }
 
-long *processinpf(char *fname, int *m, int *n)
+int *processinpf(char *fname, int *m, int *n)
 {
     /* In order to make no assumptions, the file is treated as lines containing the same amount of words each,
      * except for lines starting with #, which are ignored (i.e. comments). These words are checked to make sure they contain only floating number-type
@@ -59,7 +59,7 @@ long *processinpf(char *fname, int *m, int *n)
     size_t bwbuf=WBUF;
     char *bufword=calloc(bwbuf, sizeof(char)); /* this is the string we'll keep overwriting. */
 
-    long *mat=malloc(GBUF*sizeof(long));
+    int *mat=malloc(GBUF*sizeof(int));
 
     while( (c=fgetc(fp)) != EOF) {
         /*  take care of  */
@@ -68,7 +68,7 @@ long *processinpf(char *fname, int *m, int *n)
                 wa->wln[couw]=couc;
                 bufword[couc++]='\0';
                 bufword = realloc(bufword, couc*sizeof(char)); /* normalize */
-                mat[couw]=atol(bufword);
+                mat[couw]=(int)(100.5*atof(bufword));
                 couc=0;
                 couw++;
             }
@@ -90,7 +90,7 @@ long *processinpf(char *fname, int *m, int *n)
             if(couw == wa->wsbuf-1) {
                 wa->wsbuf += GBUF;
                 wa->wln=realloc(wa->wln, wa->wsbuf*sizeof(size_t));
-                mat=realloc(mat, wa->wsbuf*sizeof(long));
+                mat=realloc(mat, wa->wsbuf*sizeof(int));
                 for(i=wa->wsbuf-GBUF;i<wa->wsbuf;++i)
                     wa->wln[i]=0;
             }
@@ -118,7 +118,7 @@ long *processinpf(char *fname, int *m, int *n)
     /* normalization stage */
     wa->quan=couw;
     wa->wln = realloc(wa->wln, wa->quan*sizeof(size_t)); /* normalize */
-    mat = realloc(mat, wa->quan*sizeof(long)); /* normalize */
+    mat = realloc(mat, wa->quan*sizeof(int)); /* normalize */
     wa->wpla= realloc(wa->wpla, wa->numl*sizeof(size_t));
 
     *m= wa->numl;
@@ -174,8 +174,8 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     int i, j, nr, nc, mins;
-    double rsecs;
-    long *mat=processinpf(argv[1], &nr, &nc);
+    double hsecs;
+    int *mat=processinpf(argv[1], &nr, &nc);
     int divby3=(nr*nc)%3;
     if(divby3) {
         printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
@@ -184,13 +184,12 @@ int main(int argc, char *argv[])
 #ifdef DBG
     printf("nr: %d nc: %d\n", nr, nc); 
 #endif
+    /* note EDLs come in seconds, and libmp3 is seconds-hundreths, so multiplying and orunding to nearest is fine */
     for(i=0;i<nr;++i) {
         for(j=0;j<nc;++j) {
             if(!((nc*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
                 continue;
-            mins=(int)(mat[nc*i+j]/60.0);
-            rsecs=mat[nc*i+j]-mins*60.0;
-            printf("%d.%2.2f ", mins, rsecs);
+            printf("%d ", mat[nc*i+j]);
         }
         printf("\n"); 
     }
