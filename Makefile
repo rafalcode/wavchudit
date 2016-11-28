@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-g -Wall
+CFLAGS=-O3
+DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
 EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl
 
@@ -81,9 +82,13 @@ routim_dd: routim.c
 redl: redl.c
 	${CC} ${CFLAGS} -o $@ $^
 
-# this one here seems to just output the edl contents in more flexible format
+# OK, this is the program that uses libmp3splt and an edl file.
+# However, the conversion of the timings are not great.
+# # note this wil also split oggs, but outer and inner splits also taken .. only in ogg not in mp3, weird huh?
 smedl: smedl.c
 	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
+smedl_d: smedl.c
+	${CC} ${DCFLAGS} -o $@ $^ ${LIBSMP3}
 
 mymin: mymin.c
 	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
