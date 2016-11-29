@@ -1,4 +1,4 @@
-/* Takes an edl file and extracts the chunks */
+/* Reads the makefile for description */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,39 +12,10 @@
 #define GBUF 64
 #define WBUF 8
 
-// edl times pushed 2 secs ahead: compenstae
+// edl times pushed 2 secs ahead: compensate?
 #define PBACK 400
 
 typedef unsigned char boole;
-
-typedef struct /* wseq_t */
-{
-    size_t *wln;
-    size_t wsbuf;
-    size_t quan;
-    size_t lbuf;
-    size_t numl;
-    size_t *wpla; /* words per line array number of words per line */
-} wseq_t;
-
-wseq_t *create_wseq_t(size_t initsz)
-{
-    wseq_t *words=malloc(sizeof(wseq_t));
-    words->wsbuf = initsz;
-    words->quan = initsz;
-    words->wln=calloc(words->wsbuf, sizeof(size_t));
-    words->lbuf=WBUF;
-    words->numl=0;
-    words->wpla=calloc(words->lbuf, sizeof(size_t));
-    return words;
-}
-
-void free_wseq(wseq_t *wa)
-{
-    free(wa->wln);
-    free(wa->wpla);
-    free(wa);
-}
 
 static void print_confirmation_and_exit_if_error(splt_state *state, splt_code error) //Callback function that handles error code from libmp3splt.
 {
@@ -101,6 +72,7 @@ int main(int argc, char *argv[])
     mp3splt_set_filename_to_split(state, argv[1]);
 
     // OK, let's declare the points
+    // First up, catch the start of the  file
     int mm=0, ss=0, hh=0, fhh=0 /* so-called full hundreds format, result of combining previous three */;
     fhh = mm*6000 + ss*100 + hh;
     mp3splt_append_splitpoint(state, mp3splt_point_new(fhh, NULL));
@@ -109,6 +81,7 @@ int main(int argc, char *argv[])
         fhh = mm*6000 + ss*100 + hh;
         mp3splt_append_splitpoint(state, mp3splt_point_new(fhh, NULL));
     }
+    // And now the EOF of file. Need we work it out first? No, we can just use and impossibly long one. libmp3splt will work it out.
     mm=9999; ss=59; hh=99;
     fhh = mm*6000 + ss*100 + hh;
     mp3splt_append_splitpoint(state, mp3splt_point_new(fhh, NULL));
