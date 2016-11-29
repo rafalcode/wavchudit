@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-O3
 DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl smedlo
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -89,6 +89,9 @@ smedl: smedl.c
 	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
 smedl_d: smedl.c
 	${CC} ${DCFLAGS} -o $@ $^ ${LIBSMP3}
+# unfort, the issue of the offset required is pretty tricky ...allow it as an argument
+smedlo: smedlo.c
+	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
 
 # Mnemonic for this is SPLit Mp3 or Ogg Full Time Point
 # it will take a series of 0:0.0 points on the time line split the mp3/ogg in full (i.e. segments on either side of splitpoints) 

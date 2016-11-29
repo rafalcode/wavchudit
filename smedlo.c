@@ -12,9 +12,6 @@
 #define GBUF 64
 #define WBUF 8
 
-// edl times pushed 2 secs ahead: compenstae
-#define PBACK 200
-
 typedef unsigned char boole;
 
 typedef struct /* wseq_t */
@@ -174,10 +171,11 @@ static void print_split_filename(const char *filename, void *data) //Callback fu
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3) {
-        printf("Usage: argument 1) mp3 file 2) associated EDL file.\n");
+    if(argc != 4) {
+        printf("Usage: argument 1) mp3 file 2) associated EDL file 3) corrective offset (hundreths of sec) .\n");
         exit(EXIT_FAILURE);
     }
+    int PBACK=atoi(argv[3]); // pushback compensate for timings.
     int i, j, nr, nc;
     int *mat=processinpf(argv[2], &nr, &nc);
     int divby3=(nr*nc)%3;
