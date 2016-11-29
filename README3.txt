@@ -18,3 +18,9 @@ I noticed that EDL was gettign reported back as long.
 I mean, the raw EDL is quite clearly float. WHy do long? 
 
 I mean, you really need an explanation for that.
+
+libmp3splt comments
+-------------------
+the primary struct is the state. That is the basis one upon which you build up.
+
+There are various callback functions, where you define your function and then register it with a callback function which are "set_function" type things.

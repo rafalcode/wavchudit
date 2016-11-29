@@ -138,8 +138,10 @@ int *processinpf(char *fname, int *m, int *n)
 static void print_confirmation_and_exit_if_error(splt_state *state, splt_code error) //Callback function that handles error code from libmp3splt.
 {
     char *message = mp3splt_get_strerror(state, error);
-    if (!message)
+    if (!message) {
+        printf("State not associated with any error.\n"); 
         return;
+    }
 
     if (error < 0) {
         fprintf(stderr, "%s\n", message);
