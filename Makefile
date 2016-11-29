@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-O3
 DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -94,6 +94,8 @@ smedl_d: smedl.c
 # it will take a series of 0:0.0 points on the time line split the mp3/ogg in full (i.e. segments on either side of splitpoints) 
 # In this way the original mp3/ogg can be deleted.
 splmoftp: splmoftp.c
+	${CC} ${DCFLAGS} -o $@ $^ ${LIBSMP3}
+splmofedl: splmofedl.c
 	${CC} ${DCFLAGS} -o $@ $^ ${LIBSMP3}
 
 mymin: mymin.c

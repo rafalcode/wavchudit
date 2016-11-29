@@ -24,3 +24,10 @@ libmp3splt comments
 the primary struct is the state. That is the basis one upon which you build up.
 
 There are various callback functions, where you define your function and then register it with a callback function which are "set_function" type things.
+
+libmp3splt is also a rather high level API, it will do alot of things itself. You can give it an impossible long
+time point for a split point and it will just insert the real end of the file without your needing to calculate it.
+
+The main problem is that its timings are a bit different to the EDL and mplayer formats
+
+
