@@ -171,13 +171,17 @@ static void print_split_filename(const char *filename, void *data) //Callback fu
 
 int main(int argc, char *argv[])
 {
-    if(argc != 4) {
-        printf("Usage: argument 1) mp3 file 2) associated EDL file 3) corrective offset (hundreths of sec) .\n");
+    if(argc != 3) {
+        printf("Usage: argument 1) mp3 file accompanied with edl of same rootname 2) corrective offset (hundreths of sec) .\n");
         exit(EXIT_FAILURE);
     }
-    int PBACK=atoi(argv[3]); // pushback compensate for timings.
+    int PBACK=atoi(argv[2]); // pushback compensate for timings.
     int i, j, nr, nc;
-    int *mat=processinpf(argv[2], &nr, &nc);
+
+    char *pmk= strrchr(argv[1], '.');
+    char edlf[128];
+    sprintf(edlf, "%.*s.edl", pmk-argv[1], argv[1]);
+    int *mat=processinpf(edlf, &nr, &nc);
     int divby3=(nr*nc)%3;
     if(divby3) { // EDL files have 3 columns ... bail out if there are not three columns.
         printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
