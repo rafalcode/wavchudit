@@ -7,18 +7,29 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <dirent.h> 
+#include<ctype.h> // required for isprint
+#include<unistd.h> // required for optopt, opterr and optarg.
 
 #define MXINTV 0x7FFFFFFF /* max int value */
 
 #define ARBSZ 128
 #define GBUF 64
 
-typedef struct /* time point, tpt */
+typedef struct  /* optstruct_raw, a struct for the options */
 {
-    int m, s, h;
-} tpt;
+    unsigned char lflg, rflg; /* set to 1 for mono-ize on left channel, 2 for right channel, 3 for let program choose */
+    char *istr; /* input filename */
+    char *tstr; /* time string which will be converted to mm:ss.hh in due course */
+} optstruct_raw;
 
-typedef struct
+typedef struct  /* opts_true: a structure for the options reflecting their true types */
+{
+    unsigned char m; /* if 0 no mono-ization. 1 for use left channel, 2, for right, 3 for arbitrarily choose */
+    char *inpfn;
+    int mm, ss, hh;
+} opts_true;
+
+typedef struct /* wh_t, wavheader type */
 {
     char id[4]; // should always contain "RIFF"
     int glen;    // general length: total file length minus 8, could because the types so far seen (id and glen itself) are actually 8 bytes
@@ -33,39 +44,6 @@ typedef struct
     char datastr[4]; // should always contain "data"
     int byid; // BYtes_In_Data;
 } wh_t; /* wav header type */
-
-tpt *s2tp(char *str)
-{
-    tpt *p=malloc(sizeof(tpt));
-    char *tc, staminchar[5]={0};
-    if( (tc=strchr(str, ':')) == NULL) {
-        printf("There are no minutes \n"); 
-        p->m=0;
-        tc=str;
-    } else {
-        strncpy(staminchar, str, (int)(tc-str));
-        p->m=atoi(staminchar);
-        tc++;
-    }
-
-    char *ttc, stasecchar[5]={0};
-    if( (ttc=strchr(tc, '.')) == NULL) {
-        printf("There are no seconds\n"); 
-        p->s=0;
-        ttc=tc;
-    } else {
-        strncpy(stasecchar, tc, (int)(ttc-tc));
-        p->s=atoi(stasecchar);
-        ttc++;
-    }
-    char stahunschar[5]={0};
-    strcpy(stahunschar, ttc);
-    p->h=atoi(stahunschar);
-    if((strlen(stahunschar))==1)
-        p->h*=10;
-
-    return p;
-}
 
 char *mktmpd(void)
 {
@@ -177,33 +155,140 @@ int hdrchk(wh_t *inhdr)
     return 0;
 }
 
-int main(int argc, char *argv[])
+opts_true *processopts(optstruct_raw *rawopts)
 {
-    if(argc != 3) {
-        printf("Usage: divides wav file into equal parts and (if nec) a single unequal part (remainder)\n");
-        printf("Args: 1) Name of wavfile and 2) mm:ss.cc string\n");
+    opts_true *trueopts=calloc(1, sizeof(opts_true));
+
+    /* take care of flags first */
+    if( (rawopts->lflg) & (rawopts->rflg) )
+        trueopts->m=3;
+    else if (rawopts->rflg)
+        trueopts->m=2;
+    else if (rawopts->lflg)
+        trueopts->m=1;
+    else
+        trueopts->m=0;
+
+    if(rawopts->istr) {
+        /* memcpy(trueopts->name, rawopts->fn, sizeof(strlen(rawopts->fn)));
+         * No, don't bother with that: just copy the pointer. In any case, you'll get a segfault */
+        trueopts->inpfn=rawopts->istr;
+        printf("The input wav filename option was defined and it is set at \"%s\".\n", trueopts->inpfn);
+    } else {
+        printf("A filename after the -i option is obligatory: it's the input wav filename option.\n");
         exit(EXIT_FAILURE);
     }
+
+    char *tmptr, *tmptr2, tspec[32]={0};
+
+    if(rawopts->tstr) { // this is a complicated conditional. Go into it if you dare. But test first to see if it gives yuo what you want
+        tmptr=strchr(rawopts->tstr, ':');
+        if(tmptr) {
+            sprintf(tspec, "%.*s", (int)(tmptr-rawopts->tstr), rawopts->tstr);
+            trueopts->mm=atoi(tspec);
+        } else // if null :, mm was already initialised as zero with a calloc, but tmptr2 can't use a null: reset it to the beginning of the string
+            tmptr=rawopts->tstr;
+
+        tmptr2=strchr(tmptr, '.');
+        if(tmptr2) {
+            printf("iTes .\n"); 
+            trueopts->hh=atoi(tmptr2+1);
+            if(tmptr!=rawopts->tstr)
+                sprintf(tspec, "%.*s", (int)(tmptr2-tmptr-1), tmptr+1);
+            else 
+                sprintf(tspec, "%.*s", (int)(tmptr2-tmptr), tmptr);
+        } else if(tmptr!=rawopts->tstr) { // here was a :, but no .
+            sprintf(tspec, "%.*s", (int)(tmptr2-tmptr-1), tmptr+1);
+        } else if(tmptr==rawopts->tstr) { // here was a :, but no .
+            sprintf(tspec, "%.*s", (int)(tmptr2-tmptr), tmptr);
+        }
+        trueopts->ss=atoi(tspec);
+#ifdef DBG
+        printf("Mins: %d, secs = %d, hundreths=%d\n", trueopts->mm, trueopts->ss, trueopts->hh);
+#endif
+
+    } else {
+        printf("Error: time option obligatory, in a later version, this would imply that the entire file should be done.\n");
+        exit(EXIT_FAILURE);
+    }
+    return trueopts;
+}
+
+int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
+{
+    int c;
+    opterr = 0;
+
+    while ((c = getopt (oargc, oargv, "lri:t:")) != -1)
+        switch (c) {
+            case 'l':
+                opstru->lflg = 1;
+                break;
+            case 'r':
+                opstru->rflg = 1;
+                break;
+            case 'i':
+                opstru->istr = optarg;
+                break;
+            case 't':
+                opstru->tstr = optarg;
+                break;
+            case '?':
+                /* general error state? */
+                if (optopt == 'i')
+                    fprintf (stderr, "Option -%c requires an filename argument.\n", optopt);
+                if (optopt == 't')
+                    fprintf (stderr, "Option -%c requires a mm:ss.hh or simple number (interpreted as seconds).\n", optopt);
+                else if (isprint (optopt))
+                    fprintf (stderr, "`-%c' is not a valid option for this program.\n", optopt);
+                else
+                    fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+                return 1;
+            default:
+                abort();
+        }
+
+    return 0;
+}
+
+void prtusage(void)
+{
+    printf("This program cuts wav (specified by -i, into chunks according to time (mm:ss.hh) interval specified by -t.\n");
+    printf("This program converts 32bit sampled to 16 bit by simple shifting.\n"); 
+    printf("The input wav is indicated by the -i option. The -m option is a flag for also mono-izing the file.\n");
+    exit(EXIT_SUCCESS);
+}
+
+int main(int argc, char *argv[])
+{
+    if(argc == 1) {
+        prtusage();
+        exit(EXIT_FAILURE);
+    }
+    optstruct_raw rawopts={0};
+    catchopts(&rawopts, argc, argv);
+    opts_true *trueopts=processopts(&rawopts);
+
     /* Before opening, let's use stat on the wav file */
     struct stat fsta;
-    if(stat(argv[1], &fsta) == -1) {
+    if(stat(trueopts->inpfn, &fsta) == -1) {
         fprintf(stderr,"Can't stat input file %s", argv[2]);
         exit(EXIT_FAILURE);
     }
-    size_t statglen=fsta.st_size-8;
-    size_t statbyid=statglen-36;
+    size_t statglen=fsta.st_size-8; //filesz less 8
+    size_t statbyid=statglen-36; // filesz less 8+36, so that's less the wav header
 
     FILE *inwavfp;
-    inwavfp = fopen(argv[1],"rb");
+    inwavfp = fopen(trueopts->inpfn, "rb");
     if ( inwavfp == NULL ) {
-        fprintf(stderr,"Can't open input file %s", argv[1]);
+        fprintf(stderr,"Can't open input file %s", trueopts->inpfn);
         exit(EXIT_FAILURE);
     }
 
     if(statbyid%2 == 0)
-        printf("statbyid is even, good.\n"); 
+        printf("statbyid is even, good.\n");  // So, what is the significance of that. Say please.
     else {
-        printf("Ooops statbyid is not even.\n"); 
+        printf("Ooops statbyid is not even.\n"); // I suppose only 8bitmono wavs can be odd
         exit(EXIT_FAILURE);
     }
 
@@ -214,15 +299,14 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    tpt *p=s2tp(argv[2]);
-
-    printf("stamin=%u, stasec=%u, stahuns=%u\n", p->m, p->s, p->h);
-    int point=inhdr->byps*(p->m*60 + p->s) + p->h*inhdr->byps/100;
+    printf("stamin=%u, stasec=%u, stahuns=%u\n", trueopts->mm, trueopts->ss, trueopts->hh);
+    int point=inhdr->byps*(trueopts->mm*60 + trueopts->ss) + trueopts->hh*inhdr->byps/100;
     if(point >= inhdr->byid) {
         printf("Timepoint at which to lop is over the size of the wav file. Aborting.\n");
         exit(EXIT_FAILURE);
     }
     long iwsz=fszfind(inwavfp);
+    // perhaps the following guys should be called output chunks, as in ochunks, because someone might think that the chunks were input chunks. Actually there are input chunks
     int fullchunkz=(iwsz-44)/point;
     int partchunk= ((iwsz-44)%point);
     int chunkquan=(partchunk==0)? fullchunkz : fullchunkz+1;
@@ -232,25 +316,26 @@ int main(int argc, char *argv[])
 
     char *tmpd=mktmpd();
     char *fn=calloc(GBUF, sizeof(char));
-    char *bf=malloc(inhdr->byid);
+    char *bf=malloc(inhdr->byid); // fir slurping the entire file
     FILE *outwavfp;
 
     /* we're also going to mono ize and reduce 32 bit samples to 16, so modify the header */
     wh_t *outhdr=malloc(sizeof(wh_t));
     memcpy(outhdr, inhdr, 44*sizeof(char));
-    outhdr->nchans = 1;
+    outhdr->nchans = (trueopts->m)? 1: 2;
     outhdr->bipsamp=16;
     outhdr->bypc=outhdr->bipsamp/8;
     outhdr->byps = outhdr->nchans * outhdr->sampfq * outhdr->bypc;
     int i, j;
+    int downsz = (trueopts->m)? 4 : 2;
     for(j=0;j<chunkquan;++j) {
 
         if( (j==chunkquan-1) && partchunk) {
             bytesinchunk = partchunk;
-            outhdr->byid = partchunk/4;
+            outhdr->byid = partchunk/downsz;
         } else { 
             bytesinchunk = point;
-            outhdr->byid = point/4;
+            outhdr->byid = point/downsz;
         }
         outhdr->glen = outhdr->byid+36;
 
@@ -260,6 +345,7 @@ int main(int argc, char *argv[])
         fwrite(outhdr, sizeof(char), 44, outwavfp);
 
         /* EXCUSE ME: are you seriously telling you are reading the entire input file for each chunkquan? */
+        /* no just in chunk size ... fread runs its fd position down the file */
         if ( fread(bf, bytesinchunk, sizeof(char), inwavfp) < 1 ) {
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
@@ -273,7 +359,7 @@ int main(int argc, char *argv[])
     free(tmpd);
     free(bf);
     free(fn);
-    free(p);
+    free(trueopts);
     free(inhdr);
     free(outhdr);
     return 0;

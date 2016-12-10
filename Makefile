@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-O3
 DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl smedlo
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl smedlo spmwav2d spmwav2d_d
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -35,6 +35,8 @@ spwav2d: spwav2d.c
 # Report: I tried this "small" change. No errors were thrown ... but all I get is very low static.
 spmwav2d: spmwav2d.c
 	${CC} ${CFLAGS} $^ -o $@
+spmwav2d_d: spmwav2d.c
+	${CC} ${DCFLAGS} $^ -o $@
 
 # split wavs according to a level
 spwlev: spwlev.c
