@@ -312,17 +312,20 @@ int main(int argc, char *argv[])
     int chunkquan=(partchunk==0)? fullchunkz : fullchunkz+1;
     int bytesinchunk;
 
-    printf("Point is %i and is %li times plus %.1f%% over.\n", point, (iwsz-44)/point, ((iwsz-44)%point)*100./point);
+    printf("Point is %i and goes into the total data payload is %li times plus %.1f%% left over.\n", point, (iwsz-44)/point, ((iwsz-44)%point)*100./point);
 
     char *tmpd=mktmpd();
+    printf("Your split chunks will go into directory \"%s\"\n", tmpd);
     char *fn=calloc(GBUF, sizeof(char));
-    char *bf=malloc(inhdr->byid); // fir slurping the entire file
+    // char *bf=malloc(inhdr->byid); // fir slurping the entire file
+    char *bf=malloc(point*sizeof(char)); // ref. above: too generous ... in fact it need only be this big
     FILE *outwavfp;
 
     /* we're also going to mono ize and reduce 32 bit samples to 16, so modify the header */
     wh_t *outhdr=malloc(sizeof(wh_t));
     memcpy(outhdr, inhdr, 44*sizeof(char));
-    outhdr->nchans = (trueopts->m)? 1: 2;
+    if(trueopts->m)
+        outhdr->nchans = 1; // if not, keep to original (assured bia memcpy above)
     outhdr->bipsamp=16;
     outhdr->bypc=outhdr->bipsamp/8;
     outhdr->byps = outhdr->nchans * outhdr->sampfq * outhdr->bypc;
@@ -350,8 +353,36 @@ int main(int argc, char *argv[])
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
         }
-        for(i=0;i<bytesinchunk;i++) 
-            bf[i/2]=bf[i]>>16;
+
+        /* for the mon mix ... it will be lossy of course */
+        int combine, combine2, outcome;
+        float intermediate;
+
+        for(i=0;i<outhdr->byid;i+=2) { // this is entirely for small-endian. big endian haughtily ignored. Sorry!
+            if(trueopts->m==1) {
+                bf[i]=bf[4*i+4];
+                bf[i+1]=bf[4*i+5];
+            } else if(trueopts->m==2) {
+                bf[i]=bf[4*i+6];
+                bf[i+1]=bf[4*i+7];
+            } else if(trueopts->m==3) {
+                combine=0; // assure ourselves we have a clean int.
+                combine = (int)bf[4*i+7]; // casually slot into first byte;
+                combine <<= 8; // move first byte into second
+                combine |= (int)bf[4*i+6]; //merge with least signficant
+                combine2=0; // assure ourselves we have a clean int.
+                combine2 = (int)bf[4*i+5]; // casually slot into first byte;
+                combine2 <<= 8; // move first byte into second
+                combine2 |= (int)bf[4*i+4]; //merge with least signficant
+                intermediate=(float)(combine + combine2)*.5;
+                outcome=(int)(intermediate+.5);
+                bf[i]=(char)(outcome&0xff);
+                bf[i+1]=(char)((outcome&0xff00)>>8);
+            } else if(!trueopts->m) {
+                bf[i]=bf[2*i+2];
+                bf[i+1]=bf[2*i+3];
+            }
+        }
         fwrite(bf, sizeof(char), outhdr->byid, outwavfp);
         fclose(outwavfp);
     }
