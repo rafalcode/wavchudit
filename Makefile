@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-O3
 DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl smedlo spmwav2d spmwav2d_d
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl smedlo chewaud chewaud_d
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -30,12 +30,13 @@ endlop: endlop.c
 spwav2d: spwav2d.c
 	${CC} ${CFLAGS} $^ -o $@
 
-# This is a special one ... built for 32 sample 2 channel wavs which really are mono (historic recordings). 
-# Idea is to reduce samples to 16 via samp>>16 and get rid of one of the channels. SO it's spMwav2d
-# Report: I tried this "small" change. No errors were thrown ... but all I get is very low static.
-spmwav2d: spmwav2d.c
+# This one started from the spwav chunk splitter, but I incorporated options
+# so it started to do more. Principally it was a 32bit sample to 16 bit sample reducer.
+# under the horrible name of spmwav2d. I then changed this name to chewaud. Why not chewav,
+# well it will probably do flac's as well soon.
+chewaud: chewaud.c
 	${CC} ${CFLAGS} $^ -o $@
-spmwav2d_d: spmwav2d.c
+chewaud_d: chewaud.c
 	${CC} ${DCFLAGS} $^ -o $@
 
 # split wavs according to a level
