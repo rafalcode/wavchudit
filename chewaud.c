@@ -18,6 +18,8 @@
 typedef struct  /* optstruct_raw, a struct for the options */
 {
     unsigned char lflg, rflg; /* set to 1 for mono-ize on left channel, 2 for right channel, 3 for let program choose */
+    unsigned sflg; /* s-flag, sngle split .. which actually means two parts */
+    unsigned dflg; /* d-flag, downsampling to 16 bit samples */
     char *istr; /* input filename */
     char *tstr; /* time string which will be converted to mm:ss.hh in due course */
 } optstruct_raw;
@@ -25,6 +27,8 @@ typedef struct  /* optstruct_raw, a struct for the options */
 typedef struct  /* opts_true: a structure for the options reflecting their true types */
 {
     unsigned char m; /* if 0 no mono-ization. 1 for use left channel, 2, for right, 3 for arbitrarily choose */
+    unsigned char s; /* for the single split */
+    unsigned char d; /* for the downsampling 32 to 16 bit samples*/
     char *inpfn;
     int mm, ss, hh;
 } opts_true;
@@ -169,6 +173,10 @@ opts_true *processopts(optstruct_raw *rawopts)
     else
         trueopts->m=0;
 
+    /* some are easy as in, they are direct tranlsations */
+    trueopts->d=rawopts->dflg;
+    trueopts->s=rawopts->sflg;
+
     if(rawopts->istr) {
         /* memcpy(trueopts->name, rawopts->fn, sizeof(strlen(rawopts->fn)));
          * No, don't bother with that: just copy the pointer. In any case, you'll get a segfault */
@@ -219,13 +227,19 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
     int c;
     opterr = 0;
 
-    while ((c = getopt (oargc, oargv, "lri:t:")) != -1)
+    while ((c = getopt (oargc, oargv, "lrdsi:t:")) != -1)
         switch (c) {
             case 'l':
                 opstru->lflg = 1;
                 break;
             case 'r':
                 opstru->rflg = 1;
+                break;
+            case 'd':
+                opstru->dflg = 1;
+                break;
+            case 's':
+                opstru->sflg = 1;
                 break;
             case 'i':
                 opstru->istr = optarg;
@@ -247,7 +261,6 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
             default:
                 abort();
         }
-
     return 0;
 }
 
@@ -272,7 +285,7 @@ int main(int argc, char *argv[])
     /* Before opening, let's use stat on the wav file */
     struct stat fsta;
     if(stat(trueopts->inpfn, &fsta) == -1) {
-        fprintf(stderr,"Can't stat input file %s", argv[2]);
+        fprintf(stderr,"Can't stat input file %s", trueopts->inpfn);
         exit(EXIT_FAILURE);
     }
     size_t statglen=fsta.st_size-8; //filesz less 8
@@ -307,36 +320,59 @@ int main(int argc, char *argv[])
     }
     long iwsz=fszfind(inwavfp);
     // perhaps the following guys should be called output chunks, as in ochunks, because someone might think that the chunks were input chunks. Actually there are input chunks
-    int fullchunkz=(iwsz-44)/point;
-    int partchunk= ((iwsz-44)%point);
+    /* note in the following, is ->s is set there will be one split only, (although thsi is inevitable if the poijnt is over half the size of the file */
+    int fullchunkz= (trueopts->s)? 1 : (iwsz-44)/point;
+    int partchunk= (trueopts->s)? point*((iwsz-44)/point -1) + (iwsz-44)%point : (iwsz-44)%point;
+#ifdef DBG
+    printf("fullchkz: %d, partchk: %d\n", fullchunkz, partchunk);
+#endif
     int chunkquan=(partchunk==0)? fullchunkz : fullchunkz+1;
     int bytesinchunk;
 
-    printf("Point is %i and goes into the total data payload is %li times plus %.1f%% left over.\n", point, (iwsz-44)/point, ((iwsz-44)%point)*100./point);
+    if(trueopts->s)
+        printf("One splitpoint from file of size %d: first of size %d, second of size %d (these 2 added: %d)\n", inhdr->byid, point, partchunk, point + partchunk); 
+    else
+        printf("Point is %i and goes into the total data payload is %li times plus %.1f%% left over.\n", point, (iwsz-44)/point, ((iwsz-44)%point)*100./point);
 
     char *tmpd=mktmpd();
     printf("Your split chunks will go into directory \"%s\"\n", tmpd);
     char *fn=calloc(GBUF, sizeof(char));
     // char *bf=malloc(inhdr->byid); // fir slurping the entire file
-    char *bf=malloc(point*sizeof(char)); // ref. above: too generous ... in fact it need only be this big
+    char *bf=NULL;
+    if(partchunk>point)
+        bf=malloc(partchunk*sizeof(char)); // maximum amoutn we'll be reading from the file
+    else
+        bf=malloc(point*sizeof(char)); // ref. above: too generous ... in fact it need only be this big
     FILE *outwavfp;
 
     /* we're also going to mono ize and reduce 32 bit samples to 16, so modify the header */
     wh_t *outhdr=malloc(sizeof(wh_t));
     memcpy(outhdr, inhdr, 44*sizeof(char));
+    int i, j;
+    int downsz;
+    if(trueopts->m) {
+        if(trueopts->d)
+            downsz=4;
+        else
+            downsz=2;
+    } else {
+        if(trueopts->d)
+            downsz=2;
+        else
+            downsz=1;
+    }
+
     if(trueopts->m)
         outhdr->nchans = 1; // if not, keep to original (assured bia memcpy above)
-    outhdr->bipsamp=16;
+    outhdr->bipsamp=16; //force 16 bit sampling.
     outhdr->bypc=outhdr->bipsamp/8;
     outhdr->byps = outhdr->nchans * outhdr->sampfq * outhdr->bypc;
-    int i, j;
-    int downsz = (trueopts->m)? 4 : 2;
     for(j=0;j<chunkquan;++j) {
 
         if( (j==chunkquan-1) && partchunk) {
             bytesinchunk = partchunk;
             outhdr->byid = partchunk/downsz;
-        } else { 
+        } else { // j==chunkquan-1 with partchunk zero will also get here.
             bytesinchunk = point;
             outhdr->byid = point/downsz;
         }
@@ -347,42 +383,71 @@ int main(int argc, char *argv[])
 
         fwrite(outhdr, sizeof(char), 44, outwavfp);
 
-        /* EXCUSE ME: are you seriously telling you are reading the entire input file for each chunkquan? */
-        /* no just in chunk size ... fread runs its fd position down the file */
+        /* OK read in one chunk of size bytesinchunk. fread runs its fd position down the file */
+#ifdef DBG
+        printf("byid for this fread = %d, bytesinchunk=%d\n",outhdr->byid, bytesinchunk); 
+#endif
         if ( fread(bf, bytesinchunk, sizeof(char), inwavfp) < 1 ) {
             printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
             exit(EXIT_FAILURE);
         }
 
         /* for the mon mix ... it will be lossy of course */
-        int combine, combine2, outcome;
+        short combine, combine2;
+        int outcome;
         float intermediate;
 
-        for(i=0;i<outhdr->byid;i+=2) { // this is entirely for small-endian. big endian haughtily ignored. Sorry!
-            if(trueopts->m==1) {
-                bf[i]=bf[4*i+4];
-                bf[i+1]=bf[4*i+5];
-            } else if(trueopts->m==2) {
-                bf[i]=bf[4*i+6];
-                bf[i+1]=bf[4*i+7];
-            } else if(trueopts->m==3) {
-                combine=0; // assure ourselves we have a clean int.
-                combine = (int)bf[4*i+7]; // casually slot into first byte;
-                combine <<= 8; // move first byte into second
-                combine |= (int)bf[4*i+6]; //merge with least signficant
-                combine2=0; // assure ourselves we have a clean int.
-                combine2 = (int)bf[4*i+5]; // casually slot into first byte;
-                combine2 <<= 8; // move first byte into second
-                combine2 |= (int)bf[4*i+4]; //merge with least signficant
-                intermediate=(float)(combine + combine2)*.5;
-                outcome=(int)(intermediate+.5);
-                bf[i]=(char)(outcome&0xff);
-                bf[i+1]=(char)((outcome&0xff00)>>8);
-            } else if(!trueopts->m) {
-                bf[i]=bf[2*i+2];
-                bf[i+1]=bf[2*i+3];
+        if(trueopts->d) { // if we are downsizing from 32 to 16.
+            for(i=0;i<outhdr->byid;i+=2) { // this is entirely for small-endian. big endian haughtily ignored. Sorry!
+                if(trueopts->m==1) {
+                    bf[i]=bf[4*i+4];
+                    bf[i+1]=bf[4*i+5];
+                } else if(trueopts->m==2) {
+                    bf[i]=bf[4*i+6];
+                    bf[i+1]=bf[4*i+7];
+                } else if(trueopts->m==3) {
+                    combine=0; // assure ourselves we have a clean int.
+                    combine = (short)bf[4*i+7]; // casually slot into first byte;
+                    combine <<= 8; // move first byte into second
+                    combine |= (short)bf[4*i+6]; //merge with least signficant
+                    combine2=0; // assure ourselves we have a clean int.
+                    combine2 = (short)bf[4*i+5]; // casually slot into first byte;
+                    combine2 <<= 8; // move first byte into second
+                    combine2 |= (short)bf[4*i+4]; //merge with least signficant
+                    intermediate=(float)(combine + combine2)*.5;
+                    outcome=(int)(intermediate+.5);
+                    bf[i]=(char)(outcome&0xff);
+                    bf[i+1]=(char)((outcome&0xff00)>>8);
+                } else if(!trueopts->m) {
+                    bf[i]=bf[2*i+2];
+                    bf[i+1]=bf[2*i+3];
+                }
+            }
+        } else if(trueopts->m) { // i.e no downsizing, but yes mono-izing.
+            for(i=0;i<outhdr->byid;i+=2) { // this is entirely for small-endian. big endian haughtily ignored. Sorry!
+                if(trueopts->m==1) { // want the first channel
+                    bf[i]=bf[2*i];
+                    bf[i+1]=bf[2*i+1];
+                } else if(trueopts->m==2) {
+                    bf[i]=bf[2*i+2];
+                    bf[i+1]=bf[2*i+3];
+                } else if(trueopts->m==3) {
+                    combine=0; // assure ourselves we have a clean int.
+                    combine = (short)bf[2*i+3]; // casually slot into first byte;
+                    combine <<= 8; // move first byte into second
+                    combine |= (short)bf[2*i+2]; //merge with least signficant
+                    combine2=0; // assure ourselves we have a clean int.
+                    combine2 = (short)bf[2*i+1]; // casually slot into first byte;
+                    combine2 <<= 8; // move first byte into second
+                    combine2 |= (short)bf[2*i]; //merge with least signficant
+                    intermediate=(float)(combine + combine2)*.5;
+                    outcome=(int)(intermediate+.5);
+                    bf[i]=(char)(outcome&0xff);
+                    bf[i+1]=(char)((outcome&0xff00)>>8);
+                }
             }
         }
+
         fwrite(bf, sizeof(char), outhdr->byid, outwavfp);
         fclose(outwavfp);
     }

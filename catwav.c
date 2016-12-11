@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/time.h>
+#include <sys/stat.h>
 
 #define MXINTV 0x7FFFFFFF /* max int value */
 
@@ -133,6 +135,15 @@ int main(int argc, char *argv[])
     wh_t *inhdr1=malloc(sizeof(wh_t));
 
     /* first wav file dealt with separately */
+    /* Before opening, let's use stat on the wav file */
+    struct stat fsta;
+    if(stat(argv[1], &fsta) == -1) {
+        fprintf(stderr,"Can't stat input file %s", argv[1]);
+        exit(EXIT_FAILURE);
+    }
+    size_t statglen=fsta.st_size-8; //filesz less 8
+    size_t statbyid=statglen-36; // filesz less 8+36, so that's less the wav header
+
     inwavfp = fopen(argv[1],"rb");
     if ( inwavfp == NULL ) {
         fprintf(stderr,"Can't open input file %s", argv[1]);
@@ -140,6 +151,10 @@ int main(int argc, char *argv[])
     }
     if ( fread(inhdr1, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
         printf("Can't read file header\n");
+        exit(EXIT_FAILURE);
+    }
+    if(inhdr1->byid != statbyid) {
+        printf("header and stat conflicting on size of data payload. Pls revise.\n"); 
         exit(EXIT_FAILURE);
     }
     /* now we prepare the output file */
@@ -159,25 +174,35 @@ int main(int argc, char *argv[])
     int runningbyid=inhdr1->byid;
 
     for(i=2;i<argc;++i) {
+        if(stat(argv[i], &fsta) == -1) {
+            fprintf(stderr,"Can't stat input file %s", argv[i]);
+            exit(EXIT_FAILURE);
+        }
+        statglen=fsta.st_size-8; //filesz less 8
+        statbyid=statglen-36; // filesz less 8+36, so that's less the wav header
 
-    inwavfp = fopen(argv[i],"rb");
-    if ( inwavfp == NULL ) {
-        fprintf(stderr,"Can't open input file %s", argv[i]);
-        exit(EXIT_FAILURE);
-    }
-    if ( fread(inhdr1, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
-        printf("Can't read file header\n");
-        exit(EXIT_FAILURE);
-    }
-    runningbyid += inhdr1->byid;
+        inwavfp = fopen(argv[i],"rb");
+        if ( inwavfp == NULL ) {
+            fprintf(stderr,"Can't open input file %s", argv[i]);
+            exit(EXIT_FAILURE);
+        }
+        if ( fread(inhdr1, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
+            printf("Can't read file header\n");
+            exit(EXIT_FAILURE);
+        }
+        if(inhdr1->byid != statbyid) {
+            printf("header and stat conflicting on size of data payload. Pls revise.\n"); 
+            exit(EXIT_FAILURE);
+        }
+        runningbyid += inhdr1->byid;
 
-    bf=realloc(bf, inhdr1->byid);
-    if ( fread(bf, inhdr1->byid, sizeof(char), inwavfp) < 1 ) { /* Yup! we slurp in the baby! */
-        printf("Sorry, trouble putting input file into array\n"); 
-        exit(EXIT_FAILURE);
-    }
-    fclose(inwavfp);
-    fwrite(bf, sizeof(char), inhdr1->byid, outwavfp);
+        bf=realloc(bf, inhdr1->byid);
+        if ( fread(bf, inhdr1->byid, sizeof(char), inwavfp) < 1 ) { /* Yup! we slurp in the baby! */
+            printf("Sorry, trouble putting input file into array\n"); 
+            exit(EXIT_FAILURE);
+        }
+        fclose(inwavfp);
+        fwrite(bf, sizeof(char), inhdr1->byid, outwavfp);
     }
     free(bf);
     inhdr1->byid = runningbyid;
