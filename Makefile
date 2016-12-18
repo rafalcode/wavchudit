@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-O3
 DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mymin smedl splmoftp splmofedl smedlo chewaud chewaud_d
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo chewaud chewaud_d mymin
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -106,6 +106,12 @@ splmofedl: splmofedl.c
 
 mymin: mymin.c
 	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
+
+# some simulation programs required.
+
+mks00: mks00.c
+	${CC} ${CFLAGS} -o $@ $^ ${LIBSMP3}
+
 
 .PHONY: clean
 
