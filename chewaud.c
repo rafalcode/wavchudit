@@ -69,15 +69,6 @@ char *mktmpd(void)
     return myt;
 }
 
-long fszfind(FILE *fp)
-{
-    rewind(fp);
-    fseek(fp, 0, SEEK_END);
-    long fbytsz = ftell(fp);
-    rewind(fp);
-    return fbytsz;
-}
-
 wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chunk of certain siez */
 {
     wh_t *wh=malloc(sizeof(wh_t));
@@ -283,25 +274,24 @@ int main(int argc, char *argv[])
     opts_true *trueopts=processopts(&rawopts);
 
     /* Before opening, let's use stat on the wav file */
-    struct stat fsta;
-    if(stat(trueopts->inpfn, &fsta) == -1) {
+    struct stat ifsta;
+    if(stat(trueopts->inpfn, &ifsta) == -1) {
         fprintf(stderr,"Can't stat input file %s", trueopts->inpfn);
         exit(EXIT_FAILURE);
     }
-    size_t statglen=fsta.st_size-8; //filesz less 8
+    size_t statglen=ifsta.st_size-8; //filesz less 8
     size_t statbyid=statglen-36; // filesz less 8+36, so that's less the wav header
+    if(statbyid%2 == 0)
+        printf("statbyid is even, good.\n");  // So, what is the significance of that. Say please.
+    else {
+        printf("Ooops statbyid is not even.\n"); // I suppose only 8bitmono wavs can be odd
+        exit(EXIT_FAILURE);
+    }
 
     FILE *inwavfp;
     inwavfp = fopen(trueopts->inpfn, "rb");
     if ( inwavfp == NULL ) {
         fprintf(stderr,"Can't open input file %s", trueopts->inpfn);
-        exit(EXIT_FAILURE);
-    }
-
-    if(statbyid%2 == 0)
-        printf("statbyid is even, good.\n");  // So, what is the significance of that. Say please.
-    else {
-        printf("Ooops statbyid is not even.\n"); // I suppose only 8bitmono wavs can be odd
         exit(EXIT_FAILURE);
     }
 
@@ -318,11 +308,10 @@ int main(int argc, char *argv[])
         printf("Timepoint at which to lop is over the size of the wav file. Aborting.\n");
         exit(EXIT_FAILURE);
     }
-    long iwsz=fszfind(inwavfp);
     // perhaps the following guys should be called output chunks, as in ochunks, because someone might think that the chunks were input chunks. Actually there are input chunks
     /* note in the following, is ->s is set there will be one split only, (although thsi is inevitable if the poijnt is over half the size of the file */
-    int fullchunkz= (trueopts->s)? 1 : (iwsz-44)/point;
-    int partchunk= (trueopts->s)? point*((iwsz-44)/point -1) + (iwsz-44)%point : (iwsz-44)%point;
+    int fullchunkz= (trueopts->s)? 1 : (ifsta.st_size-44)/point;
+    int partchunk= (trueopts->s)? point*((ifsta.st_size-44)/point -1) + (ifsta.st_size-44)%point : (ifsta.st_size-44)%point;
 #ifdef DBG
     printf("fullchkz: %d, partchk: %d\n", fullchunkz, partchunk);
 #endif
@@ -332,7 +321,7 @@ int main(int argc, char *argv[])
     if(trueopts->s)
         printf("One splitpoint from file of size %d: first of size %d, second of size %d (these 2 added: %d)\n", inhdr->byid, point, partchunk, point + partchunk); 
     else
-        printf("Point is %i and goes into the total data payload is %li times plus %.1f%% left over.\n", point, (iwsz-44)/point, ((iwsz-44)%point)*100./point);
+        printf("Point is %i and goes into the total data payload is %li times plus %.1f%% left over.\n", point, (ifsta.st_size-44)/point, ((ifsta.st_size-44)%point)*100./point);
 
     char *tmpd=mktmpd();
     printf("Your split chunks will go into directory \"%s\"\n", tmpd);
