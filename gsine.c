@@ -11,7 +11,7 @@
 #include<unistd.h> // required for optopt, opterr and optarg.
 #include<math.h>
 
-#define SFREQ 540 // sound frequency in Hz
+#define SFREQ 440 // sound frequency in Hz
 
 #define ARBSZ 128
 #define GBUF 64
@@ -59,10 +59,9 @@ wh_t *hdr4chunk(int sfre, short b, short nucha, int certainsz) /* a header for a
     wh->nchans=nucha; /* fed in to function */
     wh->sampfq=sfre; /* fed in to function */
     wh->bipsamp=b;
-    wh->byid = certainsz * wh->bipsamp * wh->nchans; /* this decides the true byte payload */
-    wh->glen = wh->byid + 36;
-    /* these last two I've always seen as trivial */
     wh->bypc = wh->bipsamp/8;
+    wh->byid = certainsz * wh->bypc * wh->nchans; /* this decides the true byte payload */
+    wh->glen = wh->byid + 36;
     wh->byps = wh->nchans*wh->sampfq*wh->bypc;
     return wh;
 }
@@ -172,8 +171,10 @@ void prtusage(void)
     printf("\t-o <string>, this should be the prefix of the output file you want. The wav extension will be appended\n");
     printf("\t-f <integer>, this should be sampling frequency required, most probably 44100, or 48000 or whatever you want.\n");
     printf("\t-b <integer>, this should be the bit size required, most often 8, 16 or 32\n");
-    printf("eg.\n"); 
-    printf("\t./gsine -o uit -t 0:0.50 -b 16 -f 44100\n"); 
+    printf("\teg.\n"); 
+    printf("\t\t./gsine -o uit -t 0:0.50 -b 16 -f 44100\n"); 
+    printf("\tor:\n"); 
+    printf("\t\t./gsine -b 32 -o ui -f 44100 -t 4.0\n"); 
     exit(EXIT_SUCCESS);
 }
 
@@ -191,22 +192,37 @@ int main(int argc, char *argv[])
      * with the time and the sampling frequency we can calculate how many actual samples we're going to need. They could be 1 2 4 byte or 1 or 2 channels though */
     int certainsz = 60*trueopts->mm*trueopts->f + trueopts->ss*trueopts->f + (int)(0.5+trueopts->hh*trueopts->f/100.);
     wh_t *whd=hdr4chunk(trueopts->f, trueopts->b, trueopts->c, certainsz);/* a header for a file chunk of certain siez */
-
+#ifdef DBG
+    printf("csz:%d byid:%d glen:%d\n", certainsz, whd->byid, whd->glen);
+#endif
     FILE *outwavfp=fopen(trueopts->outfn, "wb");
     fwrite(whd, sizeof(char), 44, outwavfp);
-    char *dpay=malloc(whd->byid*sizeof(char)); /* data payload */
+    unsigned char *dpay=malloc(whd->byid*sizeof(unsigned char)); /* data payload */
     float cyclesrads=SFREQ*2*M_PI/whd->sampfq; /* number of cycles per second in radians */
     int i, j, k, knchans, bypcik;
-    int sval, mxlev=(1<<(whd->bipsamp-1)) -1;
+    int sval /* soundvalue */, mxlev=(1<<(whd->bipsamp-1)) -1 /* this will be 0x7FFF is bipsamp is 16 */;
+    float fourdpi=4/M_PI; /* Four divided by pi */
+    float onedpi=1/M_PI; /* one divided by pi */
+
+    /* Following loop looks a bit hairy, but it's fine */
     for (k = 0; k < certainsz ; k++) {
-       sval = (int)(0.5+mxlev * sin (cyclesrads*k)); /* you can feed large numbers into sine, no need to operate on values just in btwn 0 and 2PI */
-       knchans=k*whd->nchans;
-       for(i=1;i<=whd->nchans;++i) {
+        sval = (int)(0.5+mxlev * sin (cyclesrads*k)); /* cyclesradsyou can feed large numbers into sine, no need to operate on values just in btwn 0 and 2PI */
+        // sval = (int)(0.5+mxlev * fourdpi*(sin(cyclesrads*k)+(sin(3*cyclesrads*k))/3.)); /* 1st and 2nd term exp of Fourier series of square wave */
+        // sval = (int)(0.5+mxlev * (0.5 + onedpi*(sin(cyclesrads*k)-(sin(2*cyclesrads*k))/2.))); /* 1st and 2nd term exp of Fourier series of sawtooth wave */
+        knchans=k*whd->nchans;
+        for(i=0;i<whd->nchans;++i) {
             bypcik=(knchans+i)*whd->bypc;
-            for(j=0;j<whd->bypc;++j) 
-                dpay[bypcik+j] = ((sval>>(j*8))&0xFF);
-       }
+            for(j=0;j<whd->bypc;++j) {
+#ifdef DBG2
+                printf("%d ", bypcik+j);
+#endif
+                dpay[bypcik+j] = ((sval>>(j*8))&0xFF); /* exclusively small endian, LSB's come out first */
+            }
+        }
     }
+#ifdef DBG2
+    printf("\n");
+#endif
 
     fwrite(dpay, sizeof(char), whd->byid, outwavfp);
     fclose(outwavfp);
