@@ -31,3 +31,12 @@ time point for a split point and it will just insert the real end of the file wi
 The main problem is that its timings are a bit different to the EDL and mplayer formats
 
 
+chewaud.c and how legacy builds up.
+-----------------------------------
+WHen I started maniuplaitng wav files, I had use this little function of mine fszfind() whihc just finds the size of a file.
+It's in quite a few pieces of code I have. I don;t know why I was so rpoud of it, the stat functiojn is able to do that and much more.
+and it doesn't open the file either (clearly it must use the FS for that). Anyhow I had left it in, despite now using stat and
+of course it used rewind() and was causing the input file to be re-read. SO that the FD wouldsteelle febfore the wavheader and write it into the first split ffile.
+It was a devil to find, and I had to program a sine wav generator to find it! That'l learn ya!
+
+
