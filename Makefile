@@ -3,7 +3,8 @@ CFLAGS=-O3
 DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
 LIBSF=-lsndfile -lm
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo chewaud chewaud_d mymin gsine
+FLACLIBS=-lFLAC
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo chewaud chewaud_d mymin gsine flamain
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -115,6 +116,9 @@ mks00: mks00.c
 
 gsine: gsine.c
 	${CC} ${DCFLAGS} -o $@ $^ -lm
+
+flamain: flamain.c
+	${CC} ${DCFLAGS} -o $@ $^ $(FLACLIBS)
 
 .PHONY: clean
 

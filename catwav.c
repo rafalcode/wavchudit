@@ -10,6 +10,7 @@
 #define MXINTV 0x7FFFFFFF /* max int value */
 
 #define ARBSZ 128
+#define ONSZ 16
 
 typedef struct /* time point, tpt */
 {
@@ -32,13 +33,28 @@ typedef struct
     int byid; // BYtes_In_Data;
 } wh_t; /* wav header type */
 
-long fszfind(FILE *fp)
+char *mkon(char *inpfn)  /* make output filename ... some convenient */
 {
-    rewind(fp);
-    fseek(fp, 0, SEEK_END);
-    long fbytsz = ftell(fp);
-    rewind(fp);
-    return fbytsz;
+    char *on=calloc(ONSZ, sizeof(char));
+
+    struct timeval tsecs;
+    gettimeofday(&tsecs, NULL);
+    char lsns[7]={0}; // micseconds
+    sprintf(lsns, "%lu", tsecs.tv_usec);
+    sprintf(on, "t%.*s", 3, lsns); 
+
+    char *per=strrchr(inpfn, '.');
+    sprintf(on+4, "_%.*s.wav", 3, per-3); // 5 chars
+
+    /* let's avoid overwriting same named file */
+    struct stat fsta;
+    while(stat(on, &fsta) != -1) {
+        sprintf(lsns, "%lu", tsecs.tv_usec+1UL);
+        sprintf(on+1, "%.*s", 3, lsns); 
+        sprintf(on+4, "_%.*s.wav", 3, per-3); // 5 chars
+    }
+
+    return on;
 }
 
 wh_t *hdr4chunk(int sfre, char nucha, int certainsz) /* a header for a file chunk of certain siez */
@@ -128,6 +144,9 @@ int main(int argc, char *argv[])
         printf("Usage: this program concatenates all wav files mentioned in args.\n");
         exit(EXIT_FAILURE);
     }
+    /* after overwriting errors settle the output file first, this is where all the other files are cat'ed */
+    char *outfn=mkon(argv[1]);
+
     /* The first check is to see if both these files are compatible. I.e. must have same sample frequencies and the like.
      * I was goign to check to see which was the smallest, but actually right now, we're going to pull them both into memory */
     int i;
@@ -157,11 +176,7 @@ int main(int argc, char *argv[])
         printf("header and stat conflicting on size of data payload. Pls revise.\n"); 
         exit(EXIT_FAILURE);
     }
-    /* now we prepare the output file */
-    char outfn[ARBSZ]={0};
 
-    strncpy(outfn, argv[1], 3);
-    strcat(outfn, "_all.wav");
     FILE *outwavfp= fopen(outfn,"wb");
     fwrite(inhdr1, sizeof(char), 44, outwavfp); /* actually its len and byid are incorrect but we'll rewrite afterwards care of this afterwards */
     char *bf=malloc(inhdr1->byid);
@@ -212,6 +227,7 @@ int main(int argc, char *argv[])
     fclose(outwavfp);
 
     free(inhdr1);
+    free(on);
 
     return 0;
 }
