@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
     fclose(outwavfp);
 
     free(inhdr1);
-    free(on);
+    free(outfn);
 
     return 0;
 }
