@@ -51,6 +51,11 @@ int *processinpf(char *fname, int *m, int *n)
 
     /* declarations */
     FILE *fp=fopen(fname,"r");
+    if(!fp) {
+        printf("Error: unsuccessful opening of the EDL file associated with the audio file. Remember it needs\n");
+        printf("to have the same rootname. And, of course, it also needs to be present in the current directory.\n"); 
+        exit(EXIT_FAILURE);
+    }
     int i;
     size_t couc /*count chars */, couw=0 /* count words */, oldcouw = 0;
     char c;
@@ -171,11 +176,13 @@ static void print_split_filename(const char *filename, void *data) //Callback fu
 
 void prtusage(void)
 {
+    printf("\n");
     printf("THIS program losslessly splits both mp3 and ogg files based on an EDL file, which needs to have been\n");
-    printf("created previously with the mplayer program. It uses the libmp3splt library and api, which need.\n");
+    printf("created previously with the mplayer program. It uses the libmp3splt library and api, which needs\n");
     printf("to be installed on your system.\n");
     printf("USAGE - 2 arguments: 1) mp3/ogg filename. EDL filename not needed, but needs to have same rootname as audio filename.\n");
     printf("2) corrective offset in hundreths of a sec (i.e. 200 for 2 secs). This due to libmp3splt's timing not quite matching mplayer's.\n");
+    printf("\n");
 }
 
 int main(int argc, char *argv[])
@@ -189,7 +196,7 @@ int main(int argc, char *argv[])
 
     char *pmk= strrchr(argv[1], '.');
     char edlf[128];
-    sprintf(edlf, "%.*s.edl", pmk-argv[1], argv[1]);
+    sprintf(edlf, "%.*s.edl", (int)(pmk-argv[1]), argv[1]);
     int *mat=processinpf(edlf, &nr, &nc);
     int divby3=(nr*nc)%3;
     if(divby3) { // EDL files have 3 columns ... bail out if there are not three columns.
