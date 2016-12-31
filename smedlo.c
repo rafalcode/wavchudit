@@ -169,10 +169,19 @@ static void print_split_filename(const char *filename, void *data) //Callback fu
     fflush(stdout);
 }
 
+void prtusage(void)
+{
+    printf("THIS program losslessly splits both mp3 and ogg files based on an EDL file, which needs to have been\n");
+    printf("created previously with the mplayer program. It uses the libmp3splt library and api, which need.\n");
+    printf("to be installed on your system.\n");
+    printf("USAGE - 2 arguments: 1) mp3/ogg filename. EDL filename not needed, but needs to have same rootname as audio filename.\n");
+    printf("2) corrective offset in hundreths of a sec (i.e. 200 for 2 secs). This due to libmp3splt's timing not quite matching mplayer's.\n");
+}
+
 int main(int argc, char *argv[])
 {
     if(argc != 3) {
-        printf("Usage: argument 1) mp3 file accompanied with edl of same rootname 2) corrective offset (hundreths of sec) .\n");
+        prtusage();
         exit(EXIT_FAILURE);
     }
     int PBACK=atoi(argv[2]); // pushback compensate for timings.
