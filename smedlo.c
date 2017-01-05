@@ -11,6 +11,8 @@
 
 #define GBUF 64
 #define WBUF 8
+#define XG_BEG 0 // exaggerrated beginning
+#define XG_END 10000000 // exaggerrated end
 
 typedef unsigned char boole;
 
@@ -104,7 +106,104 @@ int *processinpf(char *fname, int *m, int *n)
             bufword=realloc(bufword, bwbuf*sizeof(char)); /* don't bother with memset, it's not necessary */
             bufword[couc++]=c; /* no need to check here, it's the first character */
             inword=1;
-        } else if( (c == 0x2E) | ((c >= 0x30) && (c <= 0x39)) ) {
+        } else if( (c == 0x2E) | (c == 0x3A) | ((c >= 0x30) && (c <= 0x39)) ) {
+            if(couc == bwbuf-1) { /* the -1 so that we can always add and extra (say 0) when we want */
+                bwbuf += WBUF;
+                bufword = realloc(bufword, bwbuf*sizeof(char));
+            }
+            bufword[couc++]=c;
+        } else {
+            printf("Error. Non-float character detected. This program is only for reading floats\n"); 
+            free_wseq(wa);
+            exit(EXIT_FAILURE);
+        }
+
+    } /* end of big for statement */
+    fclose(fp);
+    free(bufword);
+
+    /* normalization stage */
+    wa->quan=couw;
+    wa->wln = realloc(wa->wln, wa->quan*sizeof(size_t)); /* normalize */
+    mat = realloc(mat, wa->quan*sizeof(int)); /* normalize */
+    wa->wpla= realloc(wa->wpla, wa->numl*sizeof(size_t));
+
+    *m= wa->numl;
+    int k=wa->wpla[0];
+    for(i=1;i<wa->numl;++i)
+        if(k != wa->wpla[i])
+            printf("Warning: Numcols is not uniform at %i words per line on all lines. This file has one with %zu.\n", k, wa->wpla[i]); 
+    *n= k; 
+    free_wseq(wa);
+
+    return mat;
+}
+
+int *pull_tnums(char *fname, int *m, int *n)
+{
+    /* In order to make no assumptions, the file is treated as lines containing the same amount of words each,
+     * except for lines starting with #, which are ignored (i.e. comments). These words are checked to make sure they contain only floating number-type
+     * characters [0123456789+-.] only, one string variable is icontinually written over and copied into a growing floating point array each time */
+
+    /* declarations */
+    FILE *fp=fopen(fname,"r");
+    if(!fp) {
+        printf("Error: unsuccessful opening of the EDL file associated with the audio file. Remember it needs\n");
+        printf("to have the same rootname. And, of course, it also needs to be present in the current directory.\n"); 
+        exit(EXIT_FAILURE);
+    }
+    int i;
+    size_t couc /*count chars */, couw=0 /* count words */, oldcouw = 0;
+    char c;
+    boole inword=0;
+    wseq_t *wa=create_wseq_t(GBUF);
+    size_t bwbuf=WBUF;
+    char *bufword=calloc(bwbuf, sizeof(char)); /* this is the string we'll keep overwriting. */
+
+    int *mat=malloc(GBUF*sizeof(int));
+    char *tmp0, mstr[16]={0};
+
+    while( (c=fgetc(fp)) != EOF) {
+        /*  take care of  */
+        if( (c== '\n') | (c == ' ') | (c == '\t') | (c=='#')) {
+            if( inword==1) { /* we end a word */
+                wa->wln[couw]=couc;
+                bufword[couc++]='\0';
+                bufword = realloc(bufword, couc*sizeof(char)); /* normalize */
+                tmp0=strchr(bufword, ':');
+                strncpy(mstr,bufword, (tmp0-bufword)*sizeof(char));
+                mat[couw]=6000*atoi(mstr) + 100*atoi(tmp0+1);
+                couc=0;
+                couw++;
+            }
+            if(c=='#') {
+                while( (c=fgetc(fp)) != '\n') ;
+                continue;
+            } else if(c=='\n') {
+                if(wa->numl == wa->lbuf-1) {
+                    wa->lbuf += WBUF;
+                    wa->wpla=realloc(wa->wpla, wa->lbuf*sizeof(size_t));
+                    memset(wa->wpla+(wa->lbuf-WBUF), 0, WBUF*sizeof(size_t));
+                }
+                wa->wpla[wa->numl] = couw-oldcouw;
+                oldcouw=couw;
+                wa->numl++;
+            }
+            inword=0;
+        } else if( (inword==0) && ((c == 0x2B) | (c == 0x3A) | (c == 0x2D) | (c == 0x2E) | ((c >= 0x30) && (c <= 0x39))) ) { /* deal with first character of new word, + and - also allowed */
+            if(couw == wa->wsbuf-1) {
+                wa->wsbuf += GBUF;
+                wa->wln=realloc(wa->wln, wa->wsbuf*sizeof(size_t));
+                mat=realloc(mat, wa->wsbuf*sizeof(int));
+                for(i=wa->wsbuf-GBUF;i<wa->wsbuf;++i)
+                    wa->wln[i]=0;
+            }
+            couc=0;
+            bwbuf=WBUF;
+            bufword=realloc(bufword, bwbuf*sizeof(char)); /* don't bother with memset, it's not necessary */
+            bufword[couc++]=c; /* no need to check here, it's the first character */
+            inword=1;
+        } else if( (c == 0x2E) | (c == 0x3A) | ((c >= 0x30) && (c <= 0x39)) ) {
             if(couc == bwbuf-1) { /* the -1 so that we can always add and extra (say 0) when we want */
                 bwbuf += WBUF;
                 bufword = realloc(bufword, bwbuf*sizeof(char));
@@ -177,26 +276,20 @@ static void print_split_filename(const char *filename, void *data) //Callback fu
 void prtusage(void)
 {
     printf("\n");
-    printf("THIS program losslessly splits both mp3 and ogg files based on an EDL file, which needs to have been\n");
-    printf("created previously with the mplayer program. It uses the libmp3splt library and api, which needs\n");
-    printf("to be installed on your system.\n");
-    printf("USAGE - 2 arguments: 1) mp3/ogg filename. EDL filename not needed, but needs to have same rootname as audio filename.\n");
+    printf("THIS program losslessly splits both mp3 and ogg files based on a timings file. The timings file can be an EDL file\n");
+    printf("which needs to have been created previously with the Mplayer program. It can also be a single column of mm:ss values.\n");
+    printf("THIS program uses the libmp3splt library and api, which needs to be installed on your system.\n");
+    printf("\n");
+    printf("USAGE - 2 arguments: 1) mp3/ogg filename. Timings file must be terminated by \".edl\" or \".tnum\" and have same\n");
+    printf("rootname as audio filename.\n");
     printf("2) corrective offset in hundreths of a sec (i.e. 200 for 2 secs). This due to libmp3splt's timing not quite matching mplayer's.\n");
     printf("\n");
 }
 
-int main(int argc, char *argv[])
+int *producenewmat(int pback, char *edlf, int *matsz)
 {
-    if(argc != 3) {
-        prtusage();
-        exit(EXIT_FAILURE);
-    }
-    int PBACK=atoi(argv[2]); // pushback compensate for timings.
     int i, j, nr, nc;
 
-    char *pmk= strrchr(argv[1], '.');
-    char edlf[128];
-    sprintf(edlf, "%.*s.edl", (int)(pmk-argv[1]), argv[1]);
     int *mat=processinpf(edlf, &nr, &nc);
     int divby3=(nr*nc)%3;
     if(divby3) { // EDL files have 3 columns ... bail out if there are not three columns.
@@ -210,8 +303,54 @@ int main(int argc, char *argv[])
     int k=0;
     for(i=0;i<nr;++i)
         for(j=0;j<2;++j)
-            newmat[k++]=mat[nc*i+j] -PBACK;
+            newmat[k++]=mat[nc*i+j] -pback;
     free(mat);
+
+    *matsz=k;
+    return newmat;
+}
+
+int *producenewmat2(int pback, char *edlf, int *matsz)
+{
+    int i, j, m, n;
+
+    int *mat=pull_tnums(edlf, &m, &n);
+    if(n!=1) {
+        printf("Error. The tnum files should be made up of only one column of timings. Bailing out.\n");
+        free(mat);
+        exit(EXIT_FAILURE);
+    }
+    int *newmat=malloc(m*sizeof(int));
+
+    int k=0;
+    for(i=0;i<m;++i)
+            newmat[i]=mat[i] -pback;
+    free(mat);
+
+    *matsz=i;
+    return newmat;
+}
+
+int main(int argc, char *argv[])
+{
+    if(argc != 3) {
+        prtusage();
+        exit(EXIT_FAILURE);
+    }
+    int PBACK=atoi(argv[2]); // pushback compensate for timings.
+    int i, j, matsz;
+
+    char *pmk= strrchr(argv[1], '.');
+    char timingsfile[128];
+    int *newmat;
+#ifdef EDL
+    sprintf(timingsfile, "%.*s.edl", (int)(pmk-argv[1]), argv[1]);
+    newmat=producenewmat(PBACK, timingsfile, &matsz);
+#elif TNUM
+    sprintf(timingsfile, "%.*s.tnum", (int)(pmk-argv[1]), argv[1]);
+    newmat=producenewmat2(PBACK, timingsfile, &matsz);
+#endif
+
     /* OK, time for the mp3splt code */
     splt_code error = SPLT_OK; /* a start section I expect */
     //initialisation of the main state, always necessary.
@@ -225,15 +364,20 @@ int main(int argc, char *argv[])
     //set the input filename to be split
     mp3splt_set_filename_to_split(state, argv[1]);
     // OK, let's declare the points
-//    splt_point *p1 = NULL, *p2=NULL;
+    //    splt_point *p1 = NULL, *p2=NULL;
     printf("EDL timings printed now\n"); 
-    for(i=0;i<nr;++i) {
-        printf("%dm%ds%dh -> ", newmat[2*i]/6000, (newmat[2*i] - 6000*(newmat[2*i]/6000))/100, (newmat[2*i] - 6000*(newmat[2*i]/6000)) - 100*((newmat[2*i] - 6000*(newmat[2*i]/6000))/100)); // yes, these minute second conversions are hellish, no way around it.
-        mp3splt_append_splitpoint(state, mp3splt_point_new(newmat[2*i], NULL));
-        printf("%dm%ds%dh\n", newmat[2*i+1]/6000, (newmat[2*i+1] - 6000*(newmat[2*i+1]/6000))/100, (newmat[2*i+1] - 6000*(newmat[2*i+1]/6000)) - 100*((newmat[2*i+1] - 6000*(newmat[2*i+1]/6000))/100)); // note these conversion exactly reflect what libmp3splt things it's doing. See auto output filename.
-        mp3splt_append_splitpoint(state, mp3splt_point_new(newmat[2*i+1], NULL));
+    //    for(i=0;i<nr;++i) {
+    //        printf("%dm%ds%dh -> ", newmat[2*i]/6000, (newmat[2*i] - 6000*(newmat[2*i]/6000))/100, (newmat[2*i] - 6000*(newmat[2*i]/6000)) - 100*((newmat[2*i] - 6000*(newmat[2*i]/6000))/100)); // yes, these minute second conversions are hellish, no way around it.
+    //        mp3splt_append_splitpoint(state, mp3splt_point_new(newmat[2*i], NULL));
+    //        printf("%dm%ds%dh\n", newmat[2*i+1]/6000, (newmat[2*i+1] - 6000*(newmat[2*i+1]/6000))/100, (newmat[2*i+1] - 6000*(newmat[2*i+1]/6000)) - 100*((newmat[2*i+1] - 6000*(newmat[2*i+1]/6000))/100)); // note these conversion exactly reflect what libmp3splt things it's doing. See auto output filename.
+    //        mp3splt_append_splitpoint(state, mp3splt_point_new(newmat[2*i+1], NULL));
+    //    }
+    mp3splt_append_splitpoint(state, mp3splt_point_new(XG_BEG, NULL));
+    for(i=0;i<matsz;++i) {
+        printf("Appending at %dm%ds%dh ...\n", newmat[i]/6000, (newmat[i] - 6000*(newmat[i]/6000))/100, (newmat[i] - 6000*(newmat[i]/6000)) - 100*((newmat[i] - 6000*(newmat[i]/6000))/100)); // yes, these minute second conversions are hellish, no way around it.
+        mp3splt_append_splitpoint(state, mp3splt_point_new(newmat[i], NULL));
     }
-    printf("\n"); 
+    mp3splt_append_splitpoint(state, mp3splt_point_new(XG_END, NULL));
     error = mp3splt_split(state);
     print_confirmation_and_exit_if_error(state, error);
     //free the memory of the main state
