@@ -280,9 +280,9 @@ void prtusage(void)
     printf("which needs to have been created previously with the Mplayer program. It can also be a single column of mm:ss values.\n");
     printf("THIS program uses the libmp3splt library and api, which needs to be installed on your system.\n");
     printf("\n");
-    printf("USAGE - 2 arguments: 1) mp3/ogg filename. Timings file must be terminated by \".edl\" or \".tnum\" and have same\n");
-    printf("rootname as audio filename.\n");
-    printf("2) corrective offset in hundreths of a sec (i.e. 200 for 2 secs). This due to libmp3splt's timing not quite matching mplayer's.\n");
+    printf("USAGE - 2 arguments: 1) mp3/ogg filename. The timings filename is guessed from this. It must be terminated by \".edl\" or \".tnum\" ");
+    printf("in the case of a single column of mm:ss values. The second argument is a corrective offset given in hundreths of a second\n");
+    printf("(i.e. 200 for 2 secs). This due to libmp3splt's timing not quite matching mplayer's.\n");
     printf("\n");
 }
 
@@ -343,13 +343,18 @@ int main(int argc, char *argv[])
     char *pmk= strrchr(argv[1], '.');
     char timingsfile[128];
     int *newmat;
-#ifdef EDL
+    struct stat ifsta0, ifsta2;
+
     sprintf(timingsfile, "%.*s.edl", (int)(pmk-argv[1]), argv[1]);
-    newmat=producenewmat(PBACK, timingsfile, &matsz);
-#elif TNUM
-    sprintf(timingsfile, "%.*s.tnum", (int)(pmk-argv[1]), argv[1]);
-    newmat=producenewmat2(PBACK, timingsfile, &matsz);
-#endif
+    if(stat(timingsfile, &ifsta0) == -1) {
+        sprintf(timingsfile, "%.*s.tnum", (int)(pmk-argv[1]), argv[1]);
+        if(stat(timingsfile, &ifsta2) == -1) {
+            printf("Error: neither a corresponding .edl nor .tnum file were found.\n");
+            exit(EXIT_FAILURE);
+        }
+        newmat=producenewmat2(PBACK, timingsfile, &matsz);
+    } else
+        newmat=producenewmat(PBACK, timingsfile, &matsz);
 
     /* OK, time for the mp3splt code */
     splt_code error = SPLT_OK; /* a start section I expect */

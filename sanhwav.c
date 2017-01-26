@@ -27,6 +27,7 @@ typedef struct /* wh_t, the wav file header, always 44 bytes in length. */
 
 unsigned hdrchk(wh_t *hd, size_t fsz)
 {
+    printf("\n"); 
     unsigned ret=0;
     /* OK .. we test what sort of header we have */
     if ( hd->id[0] != 'R' || hd->id[1] != 'I' || hd->id[2] != 'F' || hd->id[3] != 'F' ) { 
