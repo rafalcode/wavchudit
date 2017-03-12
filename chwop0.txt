@@ -1,0 +1,20 @@
+Here is an example output from chewaud.
+Needs to be cleaned up
+
+nutria@aspes:/mnt/tosh/wavs$ chewaud -i Record_Review_-_Andrew_McGregor_with_Nicholas_Baragwanath_and_Erica_Jeal_b08hmpyt_default.wav -t 20:00.0
+The input wav filename option was defined and it is set at "Record_Review_-_Andrew_McGregor_with_Nicholas_Baragwanath_and_Erica_Jeal_b08hmpyt_default.wav".
+iTes .
+statbyid is even, good.
+There substantial evidence in the non-numerical fields of this file's header to think it is a wav file
+Values held in wavheader:glen: -2011860956
+NOTE: byid: -2011860992, does not match stat value of 2283106304.
+nchans: 2
+sampfq: 48000
+byps: 192000
+bypc, bytes by capture (count of data in shorts): 4
+bipsamp: 16
+Good, "byid" (-2011860992) is 36 bytes smaller than "glen" (-2011860956).
+Duration by byps is: -10478.442383
+stamin=20, stasec=0, stahuns=0
+Point is 230400000 and goes into the total data payload is 9 times plus 90.9% left over.
+Your split chunks will go into directory "tmpdir_647561"
