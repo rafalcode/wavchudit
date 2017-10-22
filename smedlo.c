@@ -1,4 +1,5 @@
-/* Takes an edl file and extracts the chunks */
+/* This losslessly cuts ogg and mp3 files using hte libmp3splt library
+ * This means the outpfiles names are pretty much it decides */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -142,8 +143,8 @@ int *processinpf(char *fname, int *m, int *n)
 int *pull_tnums(char *fname, int *m, int *n)
 {
     /* In order to make no assumptions, the file is treated as lines containing the same amount of words each,
-     * except for lines starting with #, which are ignored (i.e. comments). These words are checked to make sure they contain only floating number-type
-     * characters [0123456789+-.] only, one string variable is icontinually written over and copied into a growing floating point array each time */
+     * except for lines starting with #, which are ignored (i.e. comments). These words are checked to make sure they contain only [0-9:.]-type
+     * characters only, one string variable is continually written over and copied into a growing floating point array ech time */
 
     /* declarations */
     FILE *fp=fopen(fname,"r");
@@ -190,7 +191,7 @@ int *pull_tnums(char *fname, int *m, int *n)
                 wa->numl++;
             }
             inword=0;
-        } else if( (inword==0) && ((c == 0x2B) | (c == 0x3A) | (c == 0x2D) | (c == 0x2E) | ((c >= 0x30) && (c <= 0x39))) ) { /* deal with first character of new word, + and - also allowed */
+        } else if( (inword==0) && ((c == '.') | (c == ':') | ((c >= 0x30) && (c <= 0x39))) ) { /* deal with first character of new word, + and - also allowed */
             if(couw == wa->wsbuf-1) {
                 wa->wsbuf += GBUF;
                 wa->wln=realloc(wa->wln, wa->wsbuf*sizeof(size_t));
@@ -203,7 +204,7 @@ int *pull_tnums(char *fname, int *m, int *n)
             bufword=realloc(bufword, bwbuf*sizeof(char)); /* don't bother with memset, it's not necessary */
             bufword[couc++]=c; /* no need to check here, it's the first character */
             inword=1;
-        } else if( (c == 0x2E) | (c == 0x3A) | ((c >= 0x30) && (c <= 0x39)) ) {
+        } else if( (c == '.') | (c == ':') | ((c >= 0x30) && (c <= 0x39)) ) {
             if(couc == bwbuf-1) { /* the -1 so that we can always add and extra (say 0) when we want */
                 bwbuf += WBUF;
                 bufword = realloc(bufword, bwbuf*sizeof(char));
@@ -337,6 +338,9 @@ int main(int argc, char *argv[])
         prtusage();
         exit(EXIT_FAILURE);
     }
+    /* Timing obtained from mplayer always miss the ogg or mp3 file by 1-5 secs, don't knowy why
+     * PBACK gives the opportunities to tweak this a little ... pushes back the timing
+     * by a certain number of centiseconds: 100 for 1 sec, etc. */
     int PBACK=atoi(argv[2]); // pushback compensate for timings.
     int i, j, matsz;
 

@@ -214,13 +214,13 @@ int main(int argc, char *argv[])
 	unsigned char wesname=0; /* wav-edl same name */
 	if( (argc !=2) & (argc != 3)) {
 		printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-		printf("1 or 2 arguments: if 1, then Name of wavfile. Name of edl-file will be same root as wav file.\n");
+		printf("1 or 2 arguments: if 1, then Name of wavfile and iname of edl- or tnum-file assumed to have same root as wav file.\n");
 		printf("if 2 arguments: 1) Name of wavfile. 2) Name of edl-file.\n");
 		exit(EXIT_FAILURE);
 	} else if (argc == 2)
 		wesname=1;
 
-	unsigned wflen=1+strlen(argv[1]); /* wav file length */
+	unsigned wflen=1+strlen(argv[1]); /* wav filename length */
 	char *edlfn=calloc(wflen, sizeof(char));
 	if(wesname)
 		sprintf(edlfn, "%.*s%s", wflen-4, argv[1], "edl");
