@@ -58,6 +58,118 @@ void free_wseq(wseq_t *wa)
 	free(wa);
 }
 
+int *pull_tnums(char *fname, int *m, int *n)
+{
+    /* In order to make no assumptions, the file is treated as lines containing the same amount of words each,
+     * except for lines starting with #, which are ignored (i.e. comments). These words are checked to make sure they contain only [0-9:.]-type
+     * characters only, one string variable is continually written over and copied into a growing floating point array ech time */
+
+    /* declarations */
+    FILE *fp=fopen(fname,"r");
+    if(!fp) {
+        printf("Error: unsuccessful opening of the EDL file associated with the audio file. Remember it needs\n");
+        printf("to have the same rootname. And, of course, it also needs to be present in the current directory.\n"); 
+        exit(EXIT_FAILURE);
+    }
+    int i;
+    size_t couc /*count chars */, couw=0 /* count words */, oldcouw = 0;
+    char c;
+    boole inword=0;
+    wseq_t *wa=create_wseq_t(GBUF);
+    size_t bwbuf=WBUF;
+    char *bufword=calloc(bwbuf, sizeof(char)); /* this is the string we'll keep overwriting. */
+
+    int *mat=malloc(GBUF*sizeof(int));
+    char *tmp0, mstr[16]={0};
+
+    while( (c=fgetc(fp)) != EOF) {
+        /*  take care of  */
+        if( (c== '\n') | (c == ' ') | (c == '\t') | (c=='#')) {
+            if( inword==1) { /* we end a word */
+                wa->wln[couw]=couc;
+                bufword[couc++]='\0';
+                bufword = realloc(bufword, couc*sizeof(char)); /* normalize */
+                tmp0=strchr(bufword, ':');
+                strncpy(mstr,bufword, (tmp0-bufword)*sizeof(char));
+                mat[couw]=6000*atoi(mstr) + 100*atoi(tmp0+1);
+                couc=0;
+                couw++;
+            }
+            if(c=='#') {
+                while( (c=fgetc(fp)) != '\n') ;
+                continue;
+            } else if(c=='\n') {
+                if(wa->numl == wa->lbuf-1) {
+                    wa->lbuf += WBUF;
+                    wa->wpla=realloc(wa->wpla, wa->lbuf*sizeof(size_t));
+                    memset(wa->wpla+(wa->lbuf-WBUF), 0, WBUF*sizeof(size_t));
+                }
+                wa->wpla[wa->numl] = couw-oldcouw;
+                oldcouw=couw;
+                wa->numl++;
+            }
+            inword=0;
+        } else if( (inword==0) && ((c == '.') | (c == ':') | ((c >= 0x30) && (c <= 0x39))) ) { /* deal with first character of new word, + and - also allowed */
+            if(couw == wa->wsbuf-1) {
+                wa->wsbuf += GBUF;
+                wa->wln=realloc(wa->wln, wa->wsbuf*sizeof(size_t));
+                mat=realloc(mat, wa->wsbuf*sizeof(int));
+                for(i=wa->wsbuf-GBUF;i<wa->wsbuf;++i)
+                    wa->wln[i]=0;
+            }
+            couc=0;
+            bwbuf=WBUF;
+            bufword=realloc(bufword, bwbuf*sizeof(char)); /* don't bother with memset, it's not necessary */
+            bufword[couc++]=c; /* no need to check here, it's the first character */
+            inword=1;
+        } else if( (c == '.') | (c == ':') | ((c >= 0x30) && (c <= 0x39)) ) {
+            if(couc == bwbuf-1) { /* the -1 so that we can always add and extra (say 0) when we want */
+                bwbuf += WBUF;
+                bufword = realloc(bufword, bwbuf*sizeof(char));
+            }
+            bufword[couc++]=c;
+        } else {
+            printf("Error. Non-float character detected. This program is only for reading floats\n"); 
+            free_wseq(wa);
+            exit(EXIT_FAILURE);
+        }
+
+    } /* end of big for statement */
+    fclose(fp);
+    free(bufword);
+
+    /* normalization stage */
+    wa->quan=couw;
+    wa->wln = realloc(wa->wln, wa->quan*sizeof(size_t)); /* normalize */
+    mat = realloc(mat, wa->quan*sizeof(int)); /* normalize */
+    wa->wpla= realloc(wa->wpla, wa->numl*sizeof(size_t));
+
+    *m= wa->numl;
+    int k=wa->wpla[0];
+    for(i=1;i<wa->numl;++i)
+        if(k != wa->wpla[i])
+            printf("Warning: Numcols is not uniform at %i words per line on all lines. This file has one with %zu.\n", k, wa->wpla[i]); 
+    *n= k; 
+    free_wseq(wa);
+
+    return mat;
+}
+
+int *producenewmat2(int pback, char *edlf, int *matsz)
+{
+    int i, j, m, n;
+
+    int *mat=pull_tnums(edlf, &m, &n);
+    if(n!=1) {
+        printf("Error. The tnum files should be made up of only one column of timings. Bailing out.\n");
+        free(mat);
+        exit(EXIT_FAILURE);
+    }
+
+    *matsz=m;
+    return mat;
+}
+
 double *processinpf(char *fname, int *m, int *n)
 {
 	/* In order to make no assumptions, the file is treated as lines containing the same amount of words each,
@@ -147,6 +259,36 @@ double *processinpf(char *fname, int *m, int *n)
 	return mat;
 }
 
+double *edl2mat(char *tmgfn, int *nr, int *nc)
+{
+    int i, j, k;
+	double *mat=processinpf(tmgfn, nr, nc);
+    int nrd=*nr;
+    int ncd=*nc;
+	int divby3=(nrd*ncd)%3;
+	if(divby3) {
+		printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
+		exit(EXIT_FAILURE);
+    }
+#ifdef DBG2
+	printf("nr: %d nc: %d\n", nrd, ncd); 
+#endif
+	int sampasz=nrd*(ncd-1); /* we get rid of one colum: mne: samp-pt array size */
+	size_t *sampa=malloc(sampasz*sizeof(size_t));
+	k=0;
+	for(i=0;i<nr;++i) 
+		for(j=0;j<nc;++j) {
+			if(!((nc*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
+				continue;
+#ifdef DBG2
+			printf("%d ", (nc*i+j+1)%3); 
+#endif
+			sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[nc*i+j]);
+		}
+        free(mat);
+        return sampa;
+}
+
 char *mktmpd(void)
 {
 	struct timeval tsecs;
@@ -211,27 +353,41 @@ int hdrchkbasic(wh_t *inhdr)
 
 int main(int argc, char *argv[])
 {
-	unsigned char wesname=0; /* wav-edl same name */
+	unsigned char wesname=0; /* wav-edl-tmg same name */
+	unsigned char edlformat=1; /* s the timing file in EDL format? If not it has to be tmg format */
 	if( (argc !=2) & (argc != 3)) {
 		printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-		printf("1 or 2 arguments: if 1, then Name of wavfile and iname of edl- or tnum-file assumed to have same root as wav file.\n");
+		printf("1 or 2 arguments: if 1, then Name of wavfile and iname of edl- or tmg-file assumed to have same root as wav file.\n");
 		printf("if 2 arguments: 1) Name of wavfile. 2) Name of edl-file.\n");
 		exit(EXIT_FAILURE);
 	} else if (argc == 2)
-		wesname=1;
+		wesname=1; // edl or tmg file with same root name as wav file, and therefore implicit */
 
+	struct stat fsta;
 	unsigned wflen=1+strlen(argv[1]); /* wav filename length */
-	char *edlfn=calloc(wflen, sizeof(char));
-	if(wesname)
-		sprintf(edlfn, "%.*s%s", wflen-4, argv[1], "edl");
-	else
-		strcpy(edlfn, argv[2]);
-	printf("wflen:%u; edlfn= %s\n", wflen, edlfn); 
+	char *tmgfn=calloc(wflen, sizeof(char));
+    char *cptr;
+	if(wesname) {
+		sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "edl");
+        if(stat(timingsfile, &fsta) == -1) {
+		    sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "tmg");
+            if(stat(timingsfile, &fsta) == -1) {
+                printf("Neither an implicit *.edl nor *.tmg file exists for timings. Bailing out.\n"); 
+		        exit(EXIT_FAILURE);
+            }
+            edlformat=0;
+        }
+    } else {
+        cptr=strchr(argv[2], '.');
+        if(!strcmp(cptr+1, "tmg"))
+            edlformat=1;
+		strcpy(tmgfn, argv[2]);
+    }
+	printf("wflen:%u; tmgfn= %s\n", wflen, tmgfn); 
 
 	int i, j, k, nr, nc;
 	/* we expect som pretty big wavs so we can't rely on byid and gleni:
 	 * let's use stat.h to work them out instead */
-	struct stat fsta;
 	if(stat(argv[1], &fsta) == -1) {
 		fprintf(stderr,"Can't open input file %s", argv[1]);
 		exit(EXIT_FAILURE);
@@ -257,34 +413,7 @@ int main(int argc, char *argv[])
 	/* in terms of the WAV, we're going to finish off by calculating the number of samples, not from
 	 * the inhdr->byid, but from the statbyid, and the nhdr->nchans and inhdr->bipsamp */
 	size_t totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
-
-	/* Read in the edl file: note that the third value is irrelevant for us,
-	 * it's some sort of marker mplayer puts in */
-	double *mat=processinpf(edlfn, &nr, &nc);
-	int divby3=(nr*nc)%3;
-	if(divby3) {
-		printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
-		exit(EXIT_FAILURE);
-	}
-#ifdef DBG2
-	printf("nr: %d nc: %d\n", nr, nc); 
-#endif
-	int sampasz=nr*(nc-1); /* we get rid of one colum: mne: samp-pt array size */
-	size_t *sampa=malloc(sampasz*sizeof(size_t));
-	k=0;
-	for(i=0;i<nr;++i) 
-		for(j=0;j<nc;++j) {
-			if(!((nc*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
-				continue;
-#ifdef DBG2
-			printf("%d ", (nc*i+j+1)%3); 
-#endif
-			sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[nc*i+j]);
-		}
-	free(mat); /* we've rendered the edl matrix into a integers now, as in sampa */
-#ifdef DBG
-	printf("\n"); 
-#endif
+	size_t *sampa=edl2matmalloc(sampasz*sizeof(size_t));
 
 	int chunkquan=nr*(nc-1)+1; /* include pre-first edlstartpt, post-last edlendpt, and edlstart and edlend interstitials. */
 
@@ -333,6 +462,6 @@ int main(int argc, char *argv[])
 	free(sampa);
 	free(fn);
 	free(inhdr);
-	free(edlfn);
+	free(tmgfn);
 	return 0;
 }
