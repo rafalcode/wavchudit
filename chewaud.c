@@ -13,11 +13,13 @@
 #define ARBSZ 128
 #define GBUF 64
 #define WBUF 8
+#define COMMONSFRE 44100
+#define COMMONNUCHA 2
 typedef unsigned char boole;
 
 typedef struct  /* optstruct_raw, a struct for the options */
 {
-    boole lflg, rflg; /* set to 1 for mono-ize on left channel, 2 for right channel, 3 for let program choose */
+    boole lflg, rflg, wflg; /* set to 1 for mono-ize on left channel, 2 for right channel, 3 for let program choose. wflg is for raw file */
     unsigned sflg; /* s-flag, sngle split .. which actually means two parts */
     unsigned dflg; /* d-flag, downsampling to 16 bit samples */
     char *istr; /* input filename */
@@ -29,6 +31,7 @@ typedef struct  /* opts_true: a structure for the options reflecting their true 
     boole m; /* if 0 no mono-ization. 1 for use left channel, 2, for right, 3 for arbitrarily choose */
     boole s; /* for the single split */
     boole d; /* for the downsampling 32 to 16 bit samples*/
+    boole w; /* if the input file is raw data */
     char *inpfn;
     int mm, ss, hh;
 } opts_true;
@@ -168,6 +171,8 @@ opts_true *processopts(optstruct_raw *rawopts)
 		trueopts->m=2;
 	else if (rawopts->lflg)
 		trueopts->m=1;
+	else if (rawopts->wflg)
+		trueopts->w=1;
 	else
 		trueopts->m=0;
 
@@ -179,11 +184,13 @@ opts_true *processopts(optstruct_raw *rawopts)
 		/* memcpy(trueopts->name, rawopts->fn, sizeof(strlen(rawopts->fn)));
 		 * No, don't bother with that: just copy the pointer. In any case, you'll get a segfault */
 		trueopts->inpfn=rawopts->istr;
-		printf("The input wav filename option was defined and is \"%s\".\n", trueopts->inpfn);
+		printf("The input filename option was defined and is \"%s\".\n", trueopts->inpfn);
 	} else {
 		printf("A filename after the -i option is obligatory: it's the input wav filename option.\n");
 		exit(EXIT_FAILURE);
 	}
+	if(trueopts->w)
+		return trueopts;
 
 	char *tmptr, *tmptr2, tspec[32]={0};
 
@@ -224,7 +231,7 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
 	int c;
 	opterr = 0;
 
-	while ((c = getopt (oargc, oargv, "lrdsi:t:")) != -1)
+	while ((c = getopt (oargc, oargv, "lrdswi:t:")) != -1)
 		switch (c) {
 			case 'l':
 				opstru->lflg = 1;
@@ -237,6 +244,9 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
 				break;
 			case 's':
 				opstru->sflg = 1;
+				break;
+			case 'w':
+				opstru->wflg = 1;
 				break;
 			case 'i':
 				opstru->istr = optarg;
@@ -264,6 +274,7 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
 void prtusage(void)
 {
 	printf("This program cuts wav (specified by -i, into chunks according to time (mm:ss.hh) interval specified by -t.\n");
+	printf("It can also onvert a raw audio file into a wav (specifed by -w option).\n");
 	printf("This program converts 32bit sampled to 16 bit by simple shifting.\n"); 
 	printf("The input wav is indicated by the -i option. The -m option is a flag for also mono-izing the file.\n");
 	exit(EXIT_SUCCESS);
@@ -285,8 +296,11 @@ int main(int argc, char *argv[])
 		fprintf(stderr,"Can't stat input file %s", trueopts->inpfn);
 		exit(EXIT_FAILURE);
 	}
-	size_t statglen=ifsta.st_size-8; //filesz less 8
-	size_t statbyid=statglen-36; // filesz less 8+36, so that's less the wav header
+	size_t statglen, statbyid;
+	char *per;
+	char *fn=calloc(GBUF, sizeof(char));
+	statglen=ifsta.st_size-(trueopts->w)?0:8;
+	statbyid=statglen-(trueopts->w)?0:36; // filesz less 8+36, so that's less the wav header
 	if(statbyid%2 == 0)
 		printf("statbyid is even, good.\n");  // So, what is the significance of that. Say please.
 	else {
@@ -295,30 +309,37 @@ int main(int argc, char *argv[])
 	}
 
 	/* OK, now for reading in the WAV file */
-	FILE *inwavfp;
+	FILE *inwavfp, *outwavfp;
 	inwavfp = fopen(trueopts->inpfn, "rb");
 	if ( inwavfp == NULL ) {
 		fprintf(stderr,"Can't open input file %s", trueopts->inpfn);
 		exit(EXIT_FAILURE);
 	}
 	/* good, so the file was successfully read .. now its wav-header */
-	wh_t *inhdr=malloc(sizeof(wh_t));
-	if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
-		printf("Can't read file header\n");
-		exit(EXIT_FAILURE);
+	wh_t *inhdr;
+	boole usestatbyid; /* a marker to say whether we should use the stat value of byid instead of the byid in the wavheader */
+	if(trueopts->w) {
+		inhdr=hdr4chunk(COMMONSFRE, COMMONNUCHA, ifsta.st_size);
+		goto raw;
+	} else {
+		inhdr=malloc(sizeof(wh_t));
+		if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
+			printf("Can't read file header\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 	/*let's test the header */
-	boole usestatbyid; /* a marker to say whether we should use the stat value of byid instead of the byid in the wavheader */
 	if (hdrchk(inhdr, statbyid, &usestatbyid)) {
 		printf("Header failed some basic WAV/RIFF file checks.\n");
 		exit(EXIT_FAILURE);
 	}
 
+	int point;
 	printf("stamin=%u, stasec=%u, stahuns=%u\n", trueopts->mm, trueopts->ss, trueopts->hh);
-	int point=inhdr->byps*(trueopts->mm*60 + trueopts->ss) + trueopts->hh*inhdr->byps/100;
+	point=inhdr->byps*(trueopts->mm*60 + trueopts->ss) + trueopts->hh*inhdr->byps/100;
 	if(!usestatbyid) {
 		if(point >= inhdr->byid) {
-			printf("Timepoint at which to lop is over the size of the wav file. Aborting.\n");
+			printf("Timepoint at which to loop is over the size of the wav file. Aborting.\n");
 			exit(EXIT_FAILURE);
 		}
 	} else {
@@ -350,14 +371,29 @@ int main(int argc, char *argv[])
 
 	char *tmpd=mktmpd();
 	printf("Your split chunks will go into directory \"%s\"\n", tmpd);
-	char *fn=calloc(GBUF, sizeof(char));
 	// char *bf=malloc(inhdr->byid); // fir slurping the entire file
 	char *bf=NULL;
-	if(partchunk>point)
+	if(trueopts->w) {
+raw:		per=strchr(trueopts->inpfn, '.');
+		// 	printf("%s to %s\n", trueopts->inpfn, per);
+		sprintf(fn, "%.*s_2.wav", (int)(per-trueopts->inpfn), trueopts->inpfn);
+		printf("%s\n", fn);
+		outwavfp= fopen(fn,"wb");
+		fwrite(inhdr, sizeof(char), 44, outwavfp);
+		bf=malloc(ifsta.st_size*sizeof(char));
+		fread(bf, ifsta.st_size, sizeof(char), inwavfp);
+		fclose(inwavfp);
+		fwrite(bf, sizeof(char),  ifsta.st_size, outwavfp);
+		fclose(outwavfp);
+		free(bf);
+		free(inhdr);
+		free(fn);
+		free(trueopts);
+		exit(EXIT_SUCCESS);
+	} else if(partchunk>point)
 		bf=malloc(partchunk*sizeof(char)); // maximum amoutn we'll be reading from the file
 	else
 		bf=malloc(point*sizeof(char)); // ref. above: too generous ... in fact it need only be this big
-	FILE *outwavfp;
 
 	/* we're also going to mono ize and reduce 32 bit samples to 16, so modify the header */
 	wh_t *outhdr=malloc(sizeof(wh_t));
