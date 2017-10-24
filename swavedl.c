@@ -155,13 +155,13 @@ int *pull_tnums(char *fname, int *m, int *n)
     return mat;
 }
 
-int *producenewmat2(int pback, char *edlf, int *matsz)
+int *producenewmat2(char *edlf, int *matsz)
 {
     int i, j, m, n;
 
     int *mat=pull_tnums(edlf, &m, &n);
     if(n!=1) {
-        printf("Error. The tnum files should be made up of only one column of timings. Bailing out.\n");
+        printf("Error. The tmg files should be made up of only one column of timings. Bailing out.\n");
         free(mat);
         exit(EXIT_FAILURE);
     }
@@ -259,11 +259,11 @@ double *processinpf(char *fname, int *m, int *n)
 	return mat;
 }
 
-double *edl2mat(char *tmgfn, int *nr, int *nc)
+size_t *edl2mat(char *tmgfn, int *nr, int *nc)
 {
     int i, j, k;
 	double *mat=processinpf(tmgfn, nr, nc);
-    int nrd=*nr;
+    int nrd=*nr; /*deref */
     int ncd=*nc;
 	int divby3=(nrd*ncd)%3;
 	if(divby3) {
@@ -271,10 +271,10 @@ double *edl2mat(char *tmgfn, int *nr, int *nc)
 		exit(EXIT_FAILURE);
     }
 #ifdef DBG2
-	printf("nr: %d nc: %d\n", nrd, ncd); 
+	printf("nrd: %d ncd: %d\n", nrd, ncd); 
 #endif
-	int sampasz=nrd*(ncd-1); /* we get rid of one colum: mne: samp-pt array size */
-	size_t *sampa=malloc(sampasz*sizeof(size_t));
+	int tsampasz=nrd*(ncd-1); /* we get rid of one colum: mne: samp-pt array size */
+	size_t *sampa=malloc(tsampasz*sizeof(size_t));
 	k=0;
 	for(i=0;i<nr;++i) 
 		for(j=0;j<nc;++j) {
@@ -413,7 +413,12 @@ int main(int argc, char *argv[])
 	/* in terms of the WAV, we're going to finish off by calculating the number of samples, not from
 	 * the inhdr->byid, but from the statbyid, and the nhdr->nchans and inhdr->bipsamp */
 	size_t totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
-	size_t *sampa=edl2matmalloc(sampasz*sizeof(size_t));
+
+    int sampasz;
+	size_t *sampa;
+    if
+        sampa=edl2mat(tmgfn, &sampasz, nr, nc);
+    else
 
 	int chunkquan=nr*(nc-1)+1; /* include pre-first edlstartpt, post-last edlendpt, and edlstart and edlend interstitials. */
 
