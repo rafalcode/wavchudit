@@ -13,7 +13,7 @@
 
 typedef unsigned char boole;
 
-typedef struct
+typedef struct /*wh_t */
 {
 	char id[4]; // should always contain "RIFF"
 	int glen;    // general length: total file length minus 8, could because the types so far seen (id and glen itself) are actually 8 bytes
@@ -259,7 +259,11 @@ double *processinpf(char *fname, int *m, int *n)
 	return mat;
 }
 
+<<<<<<< HEAD
 size_t *edl2mat(char *tmgfn, int *nr, int *nc)
+=======
+size_t *edl2mat(char *tmgfn, int *nr, int *nc, wh_t *inhdr)
+>>>>>>> 181dc729a4eefdb90767ec72c9ca32a265d5a3ab
 {
     int i, j, k;
 	double *mat=processinpf(tmgfn, nr, nc);
@@ -276,14 +280,14 @@ size_t *edl2mat(char *tmgfn, int *nr, int *nc)
 	int tsampasz=nrd*(ncd-1); /* we get rid of one colum: mne: samp-pt array size */
 	size_t *sampa=malloc(tsampasz*sizeof(size_t));
 	k=0;
-	for(i=0;i<nr;++i) 
-		for(j=0;j<nc;++j) {
-			if(!((nc*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
+	for(i=0;i<nrd;++i) 
+		for(j=0;j<ncd;++j) {
+			if(!((ncd*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
 				continue;
 #ifdef DBG2
-			printf("%d ", (nc*i+j+1)%3); 
+			printf("%d ", (ncd*i+j+1)%3); 
 #endif
-			sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[nc*i+j]);
+			sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[ncd*i+j]);
 		}
         free(mat);
         return sampa;
@@ -369,9 +373,9 @@ int main(int argc, char *argv[])
     char *cptr;
 	if(wesname) {
 		sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "edl");
-        if(stat(timingsfile, &fsta) == -1) {
+        if(stat(tmgfn, &fsta) == -1) {
 		    sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "tmg");
-            if(stat(timingsfile, &fsta) == -1) {
+            if(stat(tmgfn, &fsta) == -1) {
                 printf("Neither an implicit *.edl nor *.tmg file exists for timings. Bailing out.\n"); 
 		        exit(EXIT_FAILURE);
             }
@@ -379,7 +383,7 @@ int main(int argc, char *argv[])
         }
     } else {
         cptr=strchr(argv[2], '.');
-        if(!strcmp(cptr+1, "tmg"))
+        if(!strcmp(cptr+1, "tmg")) // so tmg extension is obligatory, if not edl
             edlformat=1;
 		strcpy(tmgfn, argv[2]);
     }
@@ -413,12 +417,18 @@ int main(int argc, char *argv[])
 	/* in terms of the WAV, we're going to finish off by calculating the number of samples, not from
 	 * the inhdr->byid, but from the statbyid, and the nhdr->nchans and inhdr->bipsamp */
 	size_t totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
+<<<<<<< HEAD
 
     int sampasz;
 	size_t *sampa;
     if
         sampa=edl2mat(tmgfn, &sampasz, nr, nc);
     else
+=======
+	size_t *sampa=edl2mat(tmgfn, &nr, &nc, inhdr);
+        // was going to ... malloc(sampasz*sizeof(size_t));
+
+>>>>>>> 181dc729a4eefdb90767ec72c9ca32a265d5a3ab
 
 	int chunkquan=nr*(nc-1)+1; /* include pre-first edlstartpt, post-last edlendpt, and edlstart and edlend interstitials. */
 
