@@ -259,125 +259,143 @@ double *processinpf(char *fname, int *m, int *n)
 	return mat;
 }
 
-<<<<<<< HEAD
-size_t *edl2mat(char *tmgfn, int *nr, int *nc)
-=======
-size_t *edl2mat(char *tmgfn, int *nr, int *nc, wh_t *inhdr)
->>>>>>> 181dc729a4eefdb90767ec72c9ca32a265d5a3ab
+size_t *edl2mat(char *tmgfn, int *nr, int *nc, wh_t *inhdr, boole edlformat)
 {
+    /* we want the sampfq from the inhdr */
     int i, j, k;
 	double *mat=processinpf(tmgfn, nr, nc);
     int nrd=*nr; /*deref */
     int ncd=*nc;
-	int divby3=(nrd*ncd)%3;
-	if(divby3) {
-		printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
-		exit(EXIT_FAILURE);
+
+    int divby3=0;
+    if(edlformat) {
+        divby3=(nrd*ncd)%3;
+        if(divby3) {
+            printf("Error: the EDL file is not a multiple of 3. Bailing out.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 #ifdef DBG2
-	printf("nrd: %d ncd: %d\n", nrd, ncd); 
+    printf("nrd: %d ncd: %d\n", nrd, ncd); 
 #endif
-	int tsampasz=nrd*(ncd-1); /* we get rid of one colum: mne: samp-pt array size */
-	size_t *sampa=malloc(tsampasz*sizeof(size_t));
-	k=0;
-	for(i=0;i<nrd;++i) 
-		for(j=0;j<ncd;++j) {
-			if(!((ncd*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
-				continue;
+    int tsampasz=nrd*(ncd-1); /* we get rid of one colum: mne: samp-pt array size */
+    size_t *sampa=malloc(tsampasz*sizeof(size_t));
+    k=0;
+    for(i=0;i<nrd;++i) 
+        for(j=0;j<ncd;++j) {
+            if(edlformat) {
+                if(!((ncd*i+j+1)%3)) /* no remainder after div by 3? we don't want it */
+                    continue;
 #ifdef DBG2
-			printf("%d ", (ncd*i+j+1)%3); 
+                printf("%d ", (ncd*i+j+1)%3); 
 #endif
-			sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[ncd*i+j]);
-		}
-        free(mat);
-        return sampa;
+                sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[ncd*i+j]);
+            } else {
+                sampa[k++]=(size_t)(.5 + ((double)inhdr->sampfq)*mat[ncd*i+j]);
+            }
+#ifdef DBG2
+                printf("%zu done\n", sampa[k-1]);
+#endif
+        }
+#ifdef DBG2
+    putchar('\n');
+#endif
+    free(mat);
+    return sampa;
 }
 
 char *mktmpd(void)
 {
-	struct timeval tsecs;
-	gettimeofday(&tsecs, NULL);
-	char *myt=calloc(14, sizeof(char));
-	strncpy(myt, "tmpdir_", 7);
-	sprintf(myt+7, "%lu", tsecs.tv_usec);
+    struct timeval tsecs;
+    gettimeofday(&tsecs, NULL);
+    char *myt=calloc(14, sizeof(char));
+    strncpy(myt, "tmpdir_", 7);
+    sprintf(myt+7, "%lu", tsecs.tv_usec);
 
-	DIR *d;
-	while((d = opendir(myt)) != NULL) { /* see if a directory witht the same name exists ... very low likelihood though */
-		gettimeofday(&tsecs, NULL);
-		sprintf(myt+7, "%lu", tsecs.tv_usec);
-		closedir(d);
-	}
-	closedir(d);
-	mkdir(myt, S_IRWXU);
+    DIR *d;
+    while((d = opendir(myt)) != NULL) { /* see if a directory witht the same name exists ... very low likelihood though */
+        gettimeofday(&tsecs, NULL);
+        sprintf(myt+7, "%lu", tsecs.tv_usec);
+        closedir(d);
+    }
+    closedir(d);
+    mkdir(myt, S_IRWXU);
 
-	return myt;
+    return myt;
 }
 
 int hdrchkbasic(wh_t *inhdr)
 {
-	/* OK .. we test what sort of header we have */
-	if ( inhdr->id[0] != 'R'
-			|| inhdr->id[1] != 'I' 
-			|| inhdr->id[2] != 'F' 
-			|| inhdr->id[3] != 'F' ) { 
-		printf("ERROR: RIFF string problem\n"); 
-		return 1;
-	}
+    /* OK .. we test what sort of header we have */
+    if ( inhdr->id[0] != 'R'
+            || inhdr->id[1] != 'I' 
+            || inhdr->id[2] != 'F' 
+            || inhdr->id[3] != 'F' ) { 
+        printf("ERROR: RIFF string problem\n"); 
+        return 1;
+    }
 
-	if ( inhdr->fstr[0] != 'W'
-			|| inhdr->fstr[1] != 'A' 
-			|| inhdr->fstr[2] != 'V' 
-			|| inhdr->fstr[3] != 'E' 
-			|| inhdr->fstr[4] != 'f'
-			|| inhdr->fstr[5] != 'm' 
-			|| inhdr->fstr[6] != 't'
-			|| inhdr->fstr[7] != ' ' ) { 
-		printf("ERROR: WAVEfmt string problem\n"); 
-		return 1;
-	}
+    if ( inhdr->fstr[0] != 'W'
+            || inhdr->fstr[1] != 'A' 
+            || inhdr->fstr[2] != 'V' 
+            || inhdr->fstr[3] != 'E' 
+            || inhdr->fstr[4] != 'f'
+            || inhdr->fstr[5] != 'm' 
+            || inhdr->fstr[6] != 't'
+            || inhdr->fstr[7] != ' ' ) { 
+        printf("ERROR: WAVEfmt string problem\n"); 
+        return 1;
+    }
 
-	if ( inhdr->datastr[0] != 'd'
-			|| inhdr->datastr[1] != 'a' 
-			|| inhdr->datastr[2] != 't' 
-			|| inhdr->datastr[3] != 'a' ) { 
-		printf("WARNING: header \"data\" string does not come up\n"); 
-		return 1;
-	}
-	if ( inhdr->fmtnum != 16 ) {
-		printf("WARNING: fmtnum is %i, while it's better off being %i\n", inhdr->fmtnum, 16); 
-		return 1;
-	}
-	if ( inhdr->pcmnum != 1 ) {
-		printf("WARNING: pcmnum is %i, while it's better off being %i\n", inhdr->pcmnum, 1); 
-		return 1;
-	}
+    if ( inhdr->datastr[0] != 'd'
+            || inhdr->datastr[1] != 'a' 
+            || inhdr->datastr[2] != 't' 
+            || inhdr->datastr[3] != 'a' ) { 
+        printf("WARNING: header \"data\" string does not come up\n"); 
+        return 1;
+    }
+    if ( inhdr->fmtnum != 16 ) {
+        printf("WARNING: fmtnum is %i, while it's better off being %i\n", inhdr->fmtnum, 16); 
+        return 1;
+    }
+    if ( inhdr->pcmnum != 1 ) {
+        printf("WARNING: pcmnum is %i, while it's better off being %i\n", inhdr->pcmnum, 1); 
+        return 1;
+    }
 
-	return 0;
+    return 0;
+}
+
+void prtusage(void)
+{
+    printf("Usage: divides wav file according to an mplayer-generated EDL or general timing (TMG) file.\n");
+    printf("1 or 2 arguments: if only 1, then it should be the name of wavfile\n");
+    printf("(its base filename will be used to deduce the edl or tmg file\n");
+    printf("if 2 arguments: 1) Name of wavfile. 2) Name of edl- or tmg- file.\n");
+    return;
 }
 
 int main(int argc, char *argv[])
 {
-	unsigned char wesname=0; /* wav-edl-tmg same name */
-	unsigned char edlformat=1; /* s the timing file in EDL format? If not it has to be tmg format */
-	if( (argc !=2) & (argc != 3)) {
-		printf("Usage: divides wav file according to an mplayer- generated EDL file.\n");
-		printf("1 or 2 arguments: if 1, then Name of wavfile and iname of edl- or tmg-file assumed to have same root as wav file.\n");
-		printf("if 2 arguments: 1) Name of wavfile. 2) Name of edl-file.\n");
-		exit(EXIT_FAILURE);
-	} else if (argc == 2)
-		wesname=1; // edl or tmg file with same root name as wav file, and therefore implicit */
+    unsigned char wesname=0; /* wav-edl-tmg same name? */
+    boole edlformat=1; /* s the timing file in EDL format? If not it has to be tmg format */
+    if( (argc !=2) & (argc != 3)) {
+        prtusage();
+        exit(EXIT_FAILURE);
+    } else if (argc == 2)
+        wesname=1; // edl or tmg file with same root name as wav file, and therefore implicit */
 
-	struct stat fsta;
-	unsigned wflen=1+strlen(argv[1]); /* wav filename length */
-	char *tmgfn=calloc(wflen, sizeof(char));
+    struct stat fsta;
+    unsigned wflen=1+strlen(argv[1]); /* wav filename length */
+    char *tmgfn=calloc(wflen, sizeof(char));
     char *cptr;
-	if(wesname) {
-		sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "edl");
+    if(wesname) {
+        sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "edl");
         if(stat(tmgfn, &fsta) == -1) {
-		    sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "tmg");
+            sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "tmg");
             if(stat(tmgfn, &fsta) == -1) {
                 printf("Neither an implicit *.edl nor *.tmg file exists for timings. Bailing out.\n"); 
-		        exit(EXIT_FAILURE);
+                exit(EXIT_FAILURE);
             }
             edlformat=0;
         }
@@ -385,98 +403,90 @@ int main(int argc, char *argv[])
         cptr=strchr(argv[2], '.');
         if(!strcmp(cptr+1, "tmg")) // so tmg extension is obligatory, if not edl
             edlformat=1;
-		strcpy(tmgfn, argv[2]);
+        strcpy(tmgfn, argv[2]);
     }
-	printf("wflen:%u; tmgfn= %s\n", wflen, tmgfn); 
+    printf("wflen:%u; tmgfn= %s\n", wflen, tmgfn); 
 
-	int i, j, k, nr, nc;
-	/* we expect som pretty big wavs so we can't rely on byid and gleni:
-	 * let's use stat.h to work them out instead */
-	if(stat(argv[1], &fsta) == -1) {
-		fprintf(stderr,"Can't open input file %s", argv[1]);
-		exit(EXIT_FAILURE);
-	}
+    int i, j, k, nr, nc;
+    /* we expect som pretty big wavs so we can't rely on byid and gleni:
+     * let's use stat.h to work them out instead */
+    if(stat(argv[1], &fsta) == -1) {
+        fprintf(stderr,"Can't open input file %s", argv[1]);
+        exit(EXIT_FAILURE);
+    }
 #ifdef DBG
-	printf("tot filesize=%zu\n", fsta.st_size); 
+    printf("tot filesize=%zu\n", fsta.st_size); 
 #endif
-	size_t statglen=fsta.st_size-8;
-	size_t tstatbyid=statglen-36; /* total stabyid, because we'll have a "current" stabyid for the chunks */
-	/* open our wav file: we get the header in early that way */
-	FILE *inwavfp;
-	inwavfp = fopen(argv[1],"rb");
-	/* of course we also need the header for other bits of data */
-	wh_t *inhdr=malloc(sizeof(wh_t));
-	if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
-		printf("Can't read file header\n");
-		exit(EXIT_FAILURE);
-	}
-	if(hdrchkbasic(inhdr)) {
-		printf("Header failed some basic WAV/RIFF file checks.\n");
-		exit(EXIT_FAILURE);
-	}
-	/* in terms of the WAV, we're going to finish off by calculating the number of samples, not from
-	 * the inhdr->byid, but from the statbyid, and the nhdr->nchans and inhdr->bipsamp */
-	size_t totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
-<<<<<<< HEAD
+    size_t statglen=fsta.st_size-8;
+    size_t tstatbyid=statglen-36; /* total stabyid, because we'll have a "current" stabyid for the chunks */
+    /* open our wav file: we get the header in early that way */
+    FILE *inwavfp;
+    inwavfp = fopen(argv[1],"rb");
+    /* of course we also need the header for other bits of data */
+    wh_t *inhdr=malloc(sizeof(wh_t));
+    if ( fread(inhdr, sizeof(wh_t), sizeof(char), inwavfp) < 1 ) {
+        printf("Can't read file header\n");
+        exit(EXIT_FAILURE);
+    }
+    if(hdrchkbasic(inhdr)) {
+        printf("Header failed some basic WAV/RIFF file checks.\n");
+        exit(EXIT_FAILURE);
+    }
+    /* in terms of the WAV, we're going to finish off by calculating the number of samples, not from
+     * the inhdr->byid, but from the statbyid, and the nhdr->nchans and inhdr->bipsamp */
+    size_t totsamps=(tstatbyid/inhdr->nchans)/(inhdr->bipsamp/8);
 
-    int sampasz;
-	size_t *sampa;
-    if
-        sampa=edl2mat(tmgfn, &sampasz, nr, nc);
-    else
-=======
-	size_t *sampa=edl2mat(tmgfn, &nr, &nc, inhdr);
-        // was going to ... malloc(sampasz*sizeof(size_t));
+    /* I started a failed mod which would pass inhdr up to edl2mat() for a reason
+     * that currently escapes me */
+    size_t *sampa=edl2mat(tmgfn, &nr, &nc, inhdr, edlformat);
 
->>>>>>> 181dc729a4eefdb90767ec72c9ca32a265d5a3ab
+    int chunkquan=nr*(nc-1)+1; /* include pre-first edlstartpt, post-last edlendpt, and edlstart and edlend interstitials. */
 
-	int chunkquan=nr*(nc-1)+1; /* include pre-first edlstartpt, post-last edlendpt, and edlstart and edlend interstitials. */
+    char *tmpd=mktmpd();
+    char *fn=calloc(GBUF, sizeof(char));
+    unsigned char *bf=NULL;
+    FILE *outwavfp;
+    size_t frompt, topt, staby, cstatbyid /* current statbyid */;
+    int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
 
-	char *tmpd=mktmpd();
-	char *fn=calloc(GBUF, sizeof(char));
-	unsigned char *bf=NULL;
-	FILE *outwavfp;
-	size_t frompt, topt, staby, cstatbyid /* current statbyid */;
-	int byidmultiplier=inhdr->nchans*inhdr->bipsamp/8;
+    for(j=0;j<chunkquan;++j) { /* note we will reuse the inhdr, only changing byid and glen */
 
-	for(j=0;j<chunkquan;++j) { /* note we will reuse the inhdr, only changing byid and glen */
-
-		frompt = (j==0)? 0: sampa[j-1];
-		topt = (j==chunkquan-1)? totsamps: sampa[j]; /* initially had cstatbyid instead of totsamps ... kept obvershooting file */
-		cstatbyid = (topt - frompt)*byidmultiplier;
-		bf=realloc(bf, cstatbyid*sizeof(unsigned char));
-		staby=frompt*byidmultiplier; /* starting byte */
+        frompt = (j==0)? 0: sampa[j-1];
+        topt = (j==chunkquan-1)? totsamps: sampa[j]; /* initially had cstatbyid instead of totsamps ... kept obvershooting file */
+        cstatbyid = (topt - frompt)*byidmultiplier;
+        bf=realloc(bf, cstatbyid*sizeof(unsigned char));
+        staby=frompt*byidmultiplier; /* starting byte */
 #ifdef DBG
-		printf("j: %d frompt: %zu, topt: %zu, cstatbyid: %zu, staby: %zu ", j, frompt, topt, cstatbyid, staby);
+        printf("j: %d frompt: %zu, topt: %zu, cstatbyid: %zu, staby: %zu ", j, frompt, topt, cstatbyid, staby);
 #endif
 
-		/* here we revert to wav's limitations on max file size */
-		inhdr->byid=(int)cstatbyid; /* overflow a distinct possibility */
-		inhdr->glen = inhdr->byid+36;
+        /* here we revert to wav's limitations on max file size */
+        inhdr->byid=(int)cstatbyid; /* overflow a distinct possibility */
+        inhdr->glen = inhdr->byid+36;
 
-		sprintf(fn, "%s/%03i.wav", tmpd, j); /* purposely only allow FOR 1000 edits */
-		outwavfp= fopen(fn,"wb");
+        sprintf(fn, "%s/%03i.wav", tmpd, j); /* purposely only allow FOR 1000 edits */
+        outwavfp= fopen(fn,"wb");
 
-		fwrite(inhdr, sizeof(unsigned char), 44, outwavfp);
+        fwrite(inhdr, sizeof(unsigned char), 44, outwavfp);
 
-		fseek(inwavfp, 44+staby, SEEK_SET); /* originally forgot to skip the 44 bytes of the header! */
+        fseek(inwavfp, 44+staby, SEEK_SET); /* originally forgot to skip the 44 bytes of the header! */
 #ifdef DBG
-		printf("ftell: %li ftell+cstatbyid: %li\n", ftell(inwavfp), cstatbyid+ftell(inwavfp)); 
+        printf("ftell: %li ftell+cstatbyid: %li\n", ftell(inwavfp), cstatbyid+ftell(inwavfp)); 
 
 #endif
-		if ( fread(bf, cstatbyid, sizeof(unsigned char), inwavfp) < 1 ) {
-			printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
-			exit(EXIT_FAILURE);
-		}
-		fwrite(bf, sizeof(unsigned char), cstatbyid, outwavfp);
-		fclose(outwavfp);
-	}
-	fclose(inwavfp);
-	free(tmpd);
-	free(bf);
-	free(sampa);
-	free(fn);
-	free(inhdr);
-	free(tmgfn);
-	return 0;
+        if ( fread(bf, cstatbyid, sizeof(unsigned char), inwavfp) < 1 ) {
+            printf("Sorry, trouble putting input file into array. Overshot maybe?\n"); 
+            exit(EXIT_FAILURE);
+        }
+        fwrite(bf, sizeof(unsigned char), cstatbyid, outwavfp);
+        fclose(outwavfp);
+    }
+    fclose(inwavfp);
+    free(tmpd);
+    free(bf);
+    free(sampa);
+    free(fn);
+    free(inhdr);
+    free(tmgfn);
+    return 0;
 }

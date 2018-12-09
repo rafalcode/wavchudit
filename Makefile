@@ -65,6 +65,8 @@ swavedl: swavedl.c
 	${CC} ${CFLAGS} $^ -o $@
 swavedl_d: swavedl.c
 	${CC} ${CFLAGS} -DDBG $^ -o $@
+swavedl_dd: swavedl.c
+	${CC} ${CFLAGS} -DDBG2 $^ -o $@
 
 # transfers endslice of first wav to the beginning of the second
 wtxslice: wtxslice.c
