@@ -318,7 +318,7 @@ char *mktmpd(void)
         sprintf(myt+7, "%lu", tsecs.tv_usec);
         closedir(d);
     }
-    closedir(d);
+    // closedir(d);
     mkdir(myt, S_IRWXU);
 
     return myt;

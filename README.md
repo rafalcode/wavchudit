@@ -59,3 +59,4 @@ time and it will split the wavfile into chunks of that size. If - as is probably
 * wavedl, needs to be run in conjunction with mplayer's -edlout switch. When navigating a wav file with mplayer, this mode records time points whne a first "i" is typed, and a second "i" is typed and stores them in a text file. this program reads the text file and outputs a wavfile for each edl first-second pair.
 * pulledl: please run without arguments. Requires an mplayer generated EDL file.
 * wtxslice: takes two wavfiles and transfer an endslice of the first to the beginning of the second. Slice point - the third argument, no prizes for guessing which the first and second arguments are - must be within the length of the first wav file and is in mins:secs.centisecs format.
+* gsine: this is an elementary sine wave generator.
