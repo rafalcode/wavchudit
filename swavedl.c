@@ -313,12 +313,12 @@ char *mktmpd(void)
     sprintf(myt+7, "%lu", tsecs.tv_usec);
 
     DIR *d;
-    while((d = opendir(myt)) != NULL) { /* see if a directory witht the same name exists ... very low likelihood though */
+    while((d = opendir(myt)) != NULL) { /* NULL is returned if a directory with this name does not exist. That is waht we want, we do not want to clobber any existing directory */
         gettimeofday(&tsecs, NULL);
         sprintf(myt+7, "%lu", tsecs.tv_usec);
         closedir(d);
     }
-    closedir(d);
+    // closedir(d); // this causing errors, because a returned NULL is a failure ... no directory will have been opened at this point, as it needs to have existed.
     mkdir(myt, S_IRWXU);
 
     return myt;
