@@ -11,6 +11,7 @@ sanhwav: sanhwav.c
 	${CC} ${CFLAGS} $^ -o $@
 
 # "cajwav" mnemonic "WAV CAJoler". This means it assumes there is a wav header and looks for some of the text entries. After that it starts to use the ftell() command to calculate the values of the other fields in the header.
+# despite its name "cajole" it does not cajole a raw into a wav, use chewaud for that.
 cajwav: cajwav.c
 	${CC} ${CFLAGS} $^ -o $@
 
