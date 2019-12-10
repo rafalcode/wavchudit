@@ -99,7 +99,7 @@ smedl_d: smedl.c
 	${CC} ${DCFLAGS} -o $@ $^ ${LIBSMP3}
 # unfort, the issue of the offset required is pretty tricky ...allow it as an argument
 smedlo: smedlo.c
-	${CC} ${CFLAGS} -DEDL -o $@ $^ ${LIBSMP3}
+	${CC} ${CFLAGS} -DEDL -L/usr/local/lib -o $@ $^ $(LIBSMP3)
 smedlo_d: smedlo.c
 	${CC} ${DCFLAGS} -DEDL -o $@ $^ ${LIBSMP3}
 smedlo_t: smedlo.c
