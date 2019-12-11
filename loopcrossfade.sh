@@ -5,10 +5,18 @@
 # gist: https://gist.github.com/coderofsalvation/7740333
 
 loopcrossfade(){
-  input="$1"; faderatio="$2"; outputdir="$3"; tmpinput="/tmp/$(basename "$input").loopcrossfade.wav"
+  input="$1"
+  faderatio="$2"
+  outputdir="$3"
+
+  tmpinput="/tmp/$(basename "$input").loopcrossfade.wav"
+
   [[ ! -f "$input" ]] && echo "cannot find $1" && exit 1
+
   valid=$(echo "$faderatio > 1.99" | bc -l );
+
   (( $valid == 0 )) && echo "faderatio should be 2.0 or bigger" && exit 1
+
   [[ -d "$outputdir" ]] && outputfile="$outputdir/$(basename "$input")_loop.$faderatio.wav" \
                         || outputfile="$input""_loop.$faderatio.wav"
   # prepare input
