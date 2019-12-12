@@ -8,7 +8,8 @@
 #include <sys/stat.h>
 
 #define nr 2
-#define nf 2
+#define nc 2
+#define nb 3
 
 typedef struct /* wavheader type: wh_t */
 {
@@ -29,17 +30,30 @@ typedef struct /* wavheader type: wh_t */
 int main(int argc, char *argv[])
 {
 
-    int i;
+    int i, j, k;
     wh_t *hd=calloc(1, sizeof(wh_t));
+    memcpy(hd->fstr, "WAVEfmt ", 8*sizeof(char));
+    memcpy(hd->id, "RIFF", 4*sizeof(char));
+    memcpy(hd->datastr, "data", 4*sizeof(char));
+    hd->fmtnum = 16;
+    hd->pcmnum = 1;
+    hd->bipsamp = 16;
+    hd->bypc = hd->bipsamp/8;
 
     int r[nr]={44100, 48000};
+    int c[nc]={1, 2};
+    short b[nb]={16, 24, 32};
     for(i=0;i<nr;++i) {
-        hd->sampfq = r[i];
-        printf("%d ", hd->sampfq);
+        for(j=0;j<nc;++j) {
+            for(k=0;k<nb;++k) {
+                hd->sampfq = r[i];
+                hd->nchans = c[j];
+                hd->bipsamp = b[k];
+                printf("\"%s\" %d %d %d\n", hd->datastr, hd->nchans, hd->sampfq, hd->bipsamp);
+            }
+        }
     }
-    printf("\n"); 
 
     free(hd);
-
     return 0;
 }
