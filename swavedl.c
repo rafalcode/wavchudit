@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
             edlformat=1;
         strcpy(tmgfn, argv[2]);
     }
-    printf("wflen:%u; tmgfn= %s\n", wflen, tmgfn); 
+    // printf("wflen:%u; tmgfn= %s\n", wflen, tmgfn); 
 
     int i, j, k, nr, nc;
     /* we expect som pretty big wavs so we can't rely on byid and gleni:
@@ -443,6 +443,7 @@ int main(int argc, char *argv[])
     int chunkquan=nr*(nc-1)+1; /* include pre-first edlstartpt, post-last edlendpt, and edlstart and edlend interstitials. */
 
     char *tmpd=mktmpd();
+    printf("INFO: split files to be put into folder %s.\n", tmpd);
     char *fn=calloc(GBUF, sizeof(char));
     unsigned char *bf=NULL;
     FILE *outwavfp;
