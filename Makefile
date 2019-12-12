@@ -4,7 +4,7 @@ DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
 LIBSF=-lsndfile -lm
 FLACLIBS=-lFLAC
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw chanceraw gwav
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -14,9 +14,14 @@ sanhwav: sanhwav.c
 # despite its name "cajole" it does not cajole a raw into a wav, use chewaud for that.
 cajwav: cajwav.c
 	${CC} ${CFLAGS} $^ -o $@
+gwav: gwav.c
+	${CC} ${CFLAGS} $^ -o $@
 
 # concatenates all wav files presented 
 catwav: catwav.c
+	${CC} ${CFLAGS} $^ -o $@
+
+chanceraw: chanceraw.c
 	${CC} ${CFLAGS} $^ -o $@
 
 beglop: beglop.c
