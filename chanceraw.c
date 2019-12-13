@@ -10,7 +10,7 @@
 
 #define ONSZ 32 // output filename size.
 #define GBUF 128
-#define nr 2
+#define nr 3
 #define nc 2
 #define nb 3
 
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
     hd->byid=fsta.st_size;
     hd->glen = hd->byid+36;
 
-    int r[nr]={44100, 48000};
+    int r[nr]={44100, 48000, 22050};
     int c[nc]={1, 2};
     short b[nb]={16, 24, 32};
 
