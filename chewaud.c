@@ -13,7 +13,6 @@
 #define ARBSZ 128
 #define GBUF 64
 #define WBUF 8
-#define COMMONSFRE 44100
 #define COMMONNUCHA 2
 typedef unsigned char boole;
 
@@ -24,6 +23,7 @@ typedef struct  /* optstruct_raw, a struct for the options */
     unsigned dflg; /* d-flag, downsampling to 16 bit samples */
     char *istr; /* input filename */
     char *tstr; /* time string which will be converted to mm:ss.hh in due course */
+    char *sfstr; /* sampling frequency 44100 or 48000 */
 } optstruct_raw;
 
 typedef struct  /* opts_true: a structure for the options reflecting their true types */
@@ -33,6 +33,7 @@ typedef struct  /* opts_true: a structure for the options reflecting their true 
     boole d; /* for the downsampling 32 to 16 bit samples*/
     boole w; /* if the input file is raw data */
     char *inpfn;
+    int sf;
     int mm, ss, hh;
 } opts_true;
 
@@ -136,7 +137,9 @@ int hdrchk(wh_t *inhdr, size_t statbyid, boole *usestatbyid)
 		printf("byid: %zu, which is the same as the stat value of %zu\n", (size_t)inhdr->byid, statbyid);
 		*usestatbyid=0;
 	} else {
-		printf("NOTE: wavheader's byid: %i, does not match stat value of %zu.\n", inhdr->byid, statbyid);
+		printf("NOTE: wavheader's byid (bytes in data) = %i, does not match stat() value of %zu.\n", inhdr->byid, statbyid);
+        if(statbyid > (size_t)0xFFFFFFFF)
+            printf("The file's byid (worked out by stat() is over the size of a signed integer.\n"); 
 		printf("wavheader's glen will also be wrong of course. Will use fstat output for input file then,\n"); 
 		*usestatbyid=1;
 	}
@@ -162,6 +165,7 @@ int hdrchk(wh_t *inhdr, size_t statbyid, boole *usestatbyid)
 
 opts_true *processopts(optstruct_raw *rawopts)
 {
+    /* this function hould also catch out options that are not being fed in */
 	opts_true *trueopts=calloc(1, sizeof(opts_true));
 
 	/* take care of flags first */
@@ -171,15 +175,22 @@ opts_true *processopts(optstruct_raw *rawopts)
 		trueopts->m=2;
 	else if (rawopts->lflg)
 		trueopts->m=1;
-	else if (rawopts->wflg)
+	else if (rawopts->wflg) {
 		trueopts->w=1;
-	else
+        printf("Note: raw flag (-w) is set.\n"); 
+    } else
 		trueopts->m=0;
 
 	/* some are easy as in, they are direct tranlsations */
 	trueopts->d=rawopts->dflg;
 	trueopts->s=rawopts->sflg;
 
+	if(rawopts->sfstr) {
+		trueopts->sf=atoi(rawopts->sfstr);
+	} else {
+		printf("The sampling frequency is necessary ... you would need to find it out yourself, mostly 44100 or 48000\n");
+		exit(EXIT_FAILURE);
+	}
 	if(rawopts->istr) {
 		/* memcpy(trueopts->name, rawopts->fn, sizeof(strlen(rawopts->fn)));
 		 * No, don't bother with that: just copy the pointer. In any case, you'll get a segfault */
@@ -231,7 +242,7 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
 	int c;
 	opterr = 0;
 
-	while ((c = getopt (oargc, oargv, "lrdswi:t:")) != -1)
+	while ((c = getopt (oargc, oargv, "lrdswi:t:f:")) != -1)
 		switch (c) {
 			case 'l':
 				opstru->lflg = 1;
@@ -248,6 +259,9 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
 			case 'w':
 				opstru->wflg = 1;
 				break;
+			case 'f':
+				opstru->sfstr = optarg;
+				break;
 			case 'i':
 				opstru->istr = optarg;
 				break;
@@ -256,6 +270,8 @@ int catchopts(optstruct_raw *opstru, int oargc, char **oargv)
 				break;
 			case '?':
 				/* general error state? */
+				if (optopt == 'f')
+					fprintf (stderr, "Option -%c requires asampling frequency argument, i.e. 44100 or 48000.\n", optopt);
 				if (optopt == 'i')
 					fprintf (stderr, "Option -%c requires an filename argument.\n", optopt);
 				if (optopt == 't')
@@ -277,6 +293,7 @@ void prtusage(void)
 	printf("It can also onvert a raw audio file into a wav (specifed by -w option).\n");
 	printf("This program converts 32bit sampled to 16 bit by simple shifting.\n"); 
 	printf("The input wav is indicated by the -i option. The -m option is a flag for also mono-izing the file.\n");
+    printf("You now must supply -f 44100 or -f 48000 for sampling frequency\n");
 	exit(EXIT_SUCCESS);
 }
 
@@ -299,10 +316,12 @@ int main(int argc, char *argv[])
 	size_t statglen, statbyid;
 	char *per;
 	char *fn=calloc(GBUF, sizeof(char));
-	statglen=ifsta.st_size-(trueopts->w)?0:8;
-	statbyid=statglen-(trueopts->w)?0:36; // filesz less 8+36, so that's less the wav header
+	statglen=ifsta.st_size-((trueopts->w)?0:8);
+    printf("st_size=%zu\n", ifsta.st_size); 
+    printf("statglen=%zu\n", statglen); 
+	statbyid=statglen-((trueopts->w)?0:36); // filesz less 8+36, so that's less the wav header
 	if(statbyid%2 == 0)
-		printf("statbyid is even, good.\n");  // So, what is the significance of that. Say please.
+		printf("statbyid (bytes in data) =%zu is even, good.\n", statbyid);  // So, what is the significance of that. Say please.
 	else {
 		printf("Ooops statbyid is not even.\n"); // I suppose only 8bitmono wavs can be odd
 		exit(EXIT_FAILURE);
@@ -319,7 +338,7 @@ int main(int argc, char *argv[])
 	wh_t *inhdr;
 	boole usestatbyid; /* a marker to say whether we should use the stat value of byid instead of the byid in the wavheader */
 	if(trueopts->w) {
-		inhdr=hdr4chunk(COMMONSFRE, COMMONNUCHA, ifsta.st_size);
+		inhdr=hdr4chunk(trueopts->sf, COMMONNUCHA, ifsta.st_size);
 		goto raw;
 	} else {
 		inhdr=malloc(sizeof(wh_t));
