@@ -4,7 +4,7 @@ DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
 LIBSF=-lsndfile -lm
 FLACLIBS=-lFLAC
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw chanceraw gwav seeraw
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw chanceraw gwav seeraw swavdcogs
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -81,6 +81,9 @@ swavedl_d: swavedl.c
 	${CC} ${CFLAGS} -DDBG $^ -o $@
 swavedl_dd: swavedl.c
 	${CC} ${CFLAGS} -DDBG2 $^ -o $@
+# based on discogs track info, though possibly more general
+swavdcogs: swavdcogs.c
+	${CC} ${CFLAGS} $^ -o $@
 
 # transfers endslice of first wav to the beginning of the second
 wtxslice: wtxslice.c

@@ -8,8 +8,8 @@
 #include <sys/stat.h>
 #include <dirent.h> 
 
-#define GBUF 64
-#define WBUF 8
+#define GBUF 4
+#define WBUF 4
 
 typedef unsigned char boole;
 
@@ -369,9 +369,11 @@ int hdrchkbasic(wh_t *inhdr)
 void prtusage(void)
 {
     printf("Usage: divides wav file according to an mplayer-generated EDL or general timing (TMG) file.\n");
-    printf("1 or 2 arguments: if only 1, then it should be the name of wavfile\n");
-    printf("(its base filename will be used to deduce the edl or tmg file\n");
-    printf("if 2 arguments: 1) Name of wavfile. 2) Name of edl- or tmg- file.\n");
+    // printf("2 or 3 arguments: if only 2, then it should be 1) name of wavfile 2) its samplefq (44100 or 48000)\n");
+    printf("1 or 2 arguments: if only 1, then it should be 1) name of wavfile\n");
+    printf("(its base filename will be used to deduce the edl or tmg file)\n");
+    // printf("if 2 arguments: 1) Name of wavfile. 2) samplefreq (441/480,00) and 3) Name of edl- or tmg- file.\n");
+    printf("if 2 arguments: 1) Name of wavfile and 2) Name of edl- or tmg- file.\n");
     return;
 }
 
@@ -386,11 +388,15 @@ int main(int argc, char *argv[])
         wesname=1; // edl or tmg file with same root name as wav file, and therefore implicit */
 
     struct stat fsta;
+    char *cptr=strrchr(argv[1], '.');
+    if(strcmp(cptr+1, "wav")) {
+        printf("Input file must have a wav file extension. Bailing out.\n"); 
+        exit(EXIT_FAILURE);
+    }
     unsigned wflen=1+strlen(argv[1]); /* wav filename length */
     char *tmgfn=calloc(wflen, sizeof(char));
-    char *cptr;
     if(wesname) {
-        sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "edl");
+        sprintf(tmgfn, "%.*s%s", (int)(cptr-argv[1]), argv[1], "edl");
         if(stat(tmgfn, &fsta) == -1) {
             sprintf(tmgfn, "%.*s%s", wflen-4, argv[1], "tmg");
             if(stat(tmgfn, &fsta) == -1) {
@@ -444,7 +450,7 @@ int main(int argc, char *argv[])
 
     char *tmpd=mktmpd();
     printf("INFO: split files to be put into folder %s.\n", tmpd);
-    char *fn=calloc(GBUF, sizeof(char));
+    char *fn=calloc(64, sizeof(char));
     unsigned char *bf=NULL;
     FILE *outwavfp;
     size_t frompt, topt, staby, cstatbyid /* current statbyid */;
