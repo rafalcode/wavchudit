@@ -105,9 +105,10 @@ int main(int argc, char *argv[])
     }
     fclose(inrawfp);
 
-    int xtnt=fsta.st_size/2;
+    unsigned whsz = sizeof(wh_t);
+    int xtnt=(fsta.st_size - sizeof(wh_t))/2; // numbytes to numshorts,
     short tmp;
-    for(i=0;i<xtnt;i+=2)  {
+    for(i=44;i<xtnt;i+=2)  {
         tmp=buf[i]<<8;
         tmp|=buf[i+1];
         printf("%i\n", tmp); 
