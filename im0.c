@@ -149,7 +149,7 @@ int hdrchk(wh_t *inhdr)
 int main(int argc, char *argv[])
 {
     if(argc != 2) {
-        printf("Usage: 1 arg, output is automatically calcd.\n");
+        printf("Usage: 1 arg, output name is automatically calcd.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -198,26 +198,26 @@ int main(int argc, char *argv[])
     }
     fclose(inwavfp1);
 
-    unsigned tmp1;
+    unsigned short tmp1;
     unsigned char ftu, ftl;
     int faddti, addt;
     float faddt;
     int whsz = sizeof(wh_t);
     int xtnt2=(fsta1.st_size - whsz)/2; // numbytes to numshorts,
-    for(i=44;i<xtnt2;i+=2)  {
-        tmp1=bf1[i]<<8;
-        tmp1|=bf1[i+1];
-        ftu=(unsigned char)((tmp1&0xFF00)>>8);
-        ftl=(unsigned char)(tmp1&0x00FF);
-        bf1[i] = ftu;
-        bf1[i+1] = ftl;
-        printf("i:%x, i+1:%x, tmp1 %x, ftu %i, ftl %i, ftu & ftl = %i\n", bf1[i], bf1[i+1], (int)tmp1, (int)ftu, (int)ftl, (int)((ftu<<8)|ftl));
+    for(i=0;i<inhdr1->byid;i+=2)  {
+        tmp1=0x00FF&bf1[i];
+        tmp1|=0xFF00&(bf1[i+1]<<8);
+        printf("i:%.2x/i+1<<8:%.2x/tmp1:%.4x\n", 0x00FF&bf1[i], 0x00FF&bf1[1+1], tmp1);
+        ftu=(unsigned char)(tmp1&0x00FF);
+        ftl=(unsigned char)((tmp1>>8)&0x00FF);
+        printf("i:%.2x, i+1:%.2x, tmp1hx %.4x, tmp1int %x, ftu %x, ftl %x\n", bf1[i], bf1[i+1], tmp1, tmp1, ftu, ftl);
+        bf1[i] = ftl;
+        bf1[i+1] = ftu;
     }
 
     fwrite(bf1, sizeof(char), inhdr1->byid, outwavfp);
     fclose(outwavfp);
     free(bf1);
-
     free(inhdr1);
     return 0;
 }

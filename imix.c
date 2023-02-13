@@ -244,32 +244,24 @@ int main(int argc, char *argv[])
     fclose(inwavfp2);
 
     int whsz = sizeof(wh_t);
-    int xtnt2=(fsta2.st_size - whsz)/2; // numbytes to numshorts,
 
-    unsigned tmp1, tmp2, faddts;
+    unsigned short tmp1, tmp2, faddts;
     unsigned char ftu, ftl;
     int faddti, addt;
     float faddt;
-    for(i=44;i<xtnt2;i+=2)  {
-        tmp1=0;
-        tmp2=0;
-        tmp1=bf1[i+point]<<8;
-        tmp1|=bf1[i+point+1];
-        tmp2=bf2[i]<<8;
-        tmp2|=bf2[i+1];
-        // addt = (int)(tmp1+tmp2);
-        // addt = tmp1+16000;
-        addt = (int)tmp1;
-        faddt = addt/2.0;
-        faddti = (int)(0.5+faddt);
+    for(i=0;i<inhdr2->byid;i+=2)  {
+        tmp1=0x00FF&bf1[i+point];
+        tmp1|=0xFF00&(bf1[i+point+1]<<8);
+        tmp2=0x00FF&bf2[i];
+        tmp2|=0xFF00&(bf2[i+1]<<8);
+
+        faddti = (short)tmp2;
         faddts = (short)faddti;
-        ftu=(char)((faddts&0xFF00)>>8);
-        ftl=(char)(faddts&0x00FF);
-        bf1[i+point] = ftu;
-        bf1[i+point+1] = ftl;
-        tmp1=bf1[i+point]<<8;
-        tmp1|=bf1[i+point+1];
-        printf("tmp1 %i, tmp2 %i, addt %i, faddt %4.4f, faddts %i, ftu %i, ftl %i, ftu & ftl = %i\n", (int)tmp1, (int)tmp2, addt, faddt, (int)faddts, (int)ftu, (int)ftl, (int)tmp1);
+        ftu=(unsigned char)(faddts&0x00FF);
+        ftl=(unsigned char)((faddts>>8)&0x00FF);
+        bf1[i+point] = ftl;
+        bf1[i+point+1] = ftu;
+        printf("bf2i: %.2x, bf2i+1: %.2x, tmp1: %hi, tmp2: %hi, faddti %i, faddts %hi, ftu %x, ftl %x\n", bf2[i], bf2[i+1], tmp1, tmp2, addt, faddt, faddts, ftu, ftl);
     }
 
     fwrite(bf1, sizeof(char), inhdr1->byid, outwavfp);
