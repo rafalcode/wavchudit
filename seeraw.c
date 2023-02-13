@@ -109,8 +109,8 @@ int main(int argc, char *argv[])
     int xtnt=(fsta.st_size - sizeof(wh_t))/2; // numbytes to numshorts,
     short tmp;
     for(i=44;i<xtnt;i+=2)  {
-        tmp=buf[i]<<8;
-        tmp|=buf[i+1];
+        tmp=0x00FF&buf[i];
+        tmp|=0xFF00&(buf[i+1]<<8);
         printf("%i\n", tmp); 
     }
 
