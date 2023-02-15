@@ -35,12 +35,15 @@ typedef struct
 tpt *s2tp(char *str)
 {
     tpt *p=malloc(sizeof(tpt));
+    int minsz, secsz, hunsz;
     char *tc, staminchar[5]={0};
     if( (tc=strchr(str, ':')) == NULL) {
         printf("There are no minutes \n"); 
         p->m=0;
         tc=str;
     } else {
+        minsz = (int)(tc-str);
+        printf("minsz=%i\n", minsz); 
         strncpy(staminchar, str, (int)(tc-str));
         p->m=atoi(staminchar);
         tc++;
@@ -52,11 +55,14 @@ tpt *s2tp(char *str)
         p->s=0;
         ttc=tc;
     } else {
-        strncpy(stasecchar, tc, (int)(ttc-tc));
+        secsz = (int)(ttc-tc);
+        printf("secsz=%i\n", secsz); 
+        strncpy(stasecchar, tc, secsz);
         p->s=atoi(stasecchar);
         ttc++;
     }
     char stahunschar[5]={0};
+    printf("hunsz=%i\n", secsz); 
     strcpy(stahunschar, ttc);
     p->h=atoi(stahunschar);
     if((strlen(stahunschar))==1)
@@ -182,9 +188,10 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    /* timepoint part */
     tpt *p=s2tp(argv[2]);
     printf("stamin=%u, stasec=%u, stahuns=%u\n", p->m, p->s, p->h);
-    int point=inhdr1->byps*(p->m*60 + p->s) + p->h*inhdr1->byps/100;
+    int point=inhdr1->byps*(p->m*60 + p->s) + p->h*inhdr1->byps/100; //byps always divisible by 100 (normally)
     printf("point-to is %i inside %i which is %.1f%% in.\n", point, inhdr1->byid, (point*100.)/inhdr1->byid); 
     if(point >= inhdr1->byid) {
         printf("Timepoint at which to imix in on first wav file is over its size. Aborting.\n");
@@ -199,7 +206,7 @@ int main(int argc, char *argv[])
     }
     size_t statglen2=fsta2.st_size-8; //filesz less 8
     size_t statbyid2=statglen2-36; // filesz less 8+36, so that's less the wav header
-                                 //
+
     /* parse edit file in very simple terms, that means using scanf */
     FILE *inwavfp2;
     inwavfp2 = fopen(argv[3],"rb");
@@ -219,6 +226,8 @@ int main(int argc, char *argv[])
         printf("header (%i) and stat (%i) conflicting on size of data payload. Pls revise.\n", inhdr2->byid, statbyid2); 
         exit(EXIT_FAILURE);
     }
+
+    // now check timept plus file duration is not over: rather work out how many times it would fit.
 
     /* now we prepare the output file */
     char outfn[ARBSZ]={0};
