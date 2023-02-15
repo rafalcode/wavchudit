@@ -245,23 +245,24 @@ int main(int argc, char *argv[])
 
     int whsz = sizeof(wh_t);
 
-    unsigned short tmp1, tmp2, faddts;
+    // bigendtmp a long variable name but it' just to
+    // remember that it definitely will not be littleendian which is how the numbers are stored on file in wav and in alot of places.
+    unsigned short bigendtmp1, bigendtmp2, faddts;
     unsigned char ftu, ftl;
     int faddti, addt;
     float faddt;
     for(i=0;i<inhdr2->byid;i+=2)  {
-        tmp1=0x00FF&bf1[i+point];
-        tmp1|=0xFF00&(bf1[i+point+1]<<8);
-        tmp2=0x00FF&bf2[i];
-        tmp2|=0xFF00&(bf2[i+1]<<8);
+        bigendtmp1=0x00FF&bf1[i+point];
+        bigendtmp1|=0xFF00&(bf1[i+point+1]<<8);
+        bigendtmp2=0x00FF&bf2[i];
+        bigendtmp2|=0xFF00&(bf2[i+1]<<8);
 
-        faddti = (short)tmp2;
-        faddts = (short)faddti;
-        ftu=(unsigned char)(faddts&0x00FF);
-        ftl=(unsigned char)((faddts>>8)&0x00FF);
+        faddts = (short)bigendtmp1 + (short)bigendtmp2;
+        ftl=(unsigned char)(faddts&0x00FF);
+        ftu=(unsigned char)((faddts>>8)&0x00FF);
         bf1[i+point] = ftl;
         bf1[i+point+1] = ftu;
-        printf("bf2i: %.2x, bf2i+1: %.2x, tmp1: %hi, tmp2: %hi, faddti %i, faddts %hi, ftu %x, ftl %x\n", bf2[i], bf2[i+1], tmp1, tmp2, addt, faddt, faddts, ftu, ftl);
+        // printf("bf2i: %.2x, bf2i+1: %.2x, bigendtmp1: %hi, bigendtmp2: %hi, faddti %i, faddts %hi, ftu %x, ftl %x\n", bf2[i], bf2[i+1], bigendtmp1, bigendtmp2, addt, faddt, faddts, ftu, ftl);
     }
 
     fwrite(bf1, sizeof(char), inhdr1->byid, outwavfp);

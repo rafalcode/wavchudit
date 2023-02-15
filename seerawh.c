@@ -107,11 +107,11 @@ int main(int argc, char *argv[])
 
     unsigned whsz = sizeof(wh_t);
     int xtnt=(fsta.st_size - sizeof(wh_t))/2; // numbytes to numshorts,
-    short bigendtmp;
+    short tmp;
     for(i=44;i<xtnt;i+=2)  {
-        bigendtmp=0x00FF&buf[i];
-        bigendtmp|=0xFF00&(buf[i+1]<<8);
-        printf("%.4 / as shortint: %hi\n", bigendtmp, bigendtmp); 
+        tmp=0x00FF&buf[i];
+        tmp|=0xFF00&(buf[i+1]<<8);
+        printf("%.4x\n", tmp); 
     }
 
     free(buf);

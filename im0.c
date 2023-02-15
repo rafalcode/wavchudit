@@ -198,21 +198,22 @@ int main(int argc, char *argv[])
     }
     fclose(inwavfp1);
 
-    unsigned short tmp1;
+    unsigned short bigendtmp1;
     unsigned char ftu, ftl;
     int faddti, addt;
     float faddt;
     int whsz = sizeof(wh_t);
     int xtnt2=(fsta1.st_size - whsz)/2; // numbytes to numshorts,
     for(i=0;i<inhdr1->byid;i+=2)  {
-        tmp1=0x00FF&bf1[i];
-        tmp1|=0xFF00&(bf1[i+1]<<8);
-        printf("i:%.2x/i+1<<8:%.2x/tmp1:%.4x\n", 0x00FF&bf1[i], 0x00FF&bf1[1+1], tmp1);
-        ftu=(unsigned char)(tmp1&0x00FF);
-        ftl=(unsigned char)((tmp1>>8)&0x00FF);
-        printf("i:%.2x, i+1:%.2x, tmp1hx %.4x, tmp1int %x, ftu %x, ftl %x\n", bf1[i], bf1[i+1], tmp1, tmp1, ftu, ftl);
-        bf1[i] = ftl;
-        bf1[i+1] = ftu;
+        bigendtmp1=0x00FF&bf1[i];
+        bigendtmp1|=0xFF00&(bf1[i+1]<<8);
+        printf("i:%.2x/i+1:%.2x/bigendtmp1:%.4x\n", bf1[i], bf1[i+1], bigendtmp1);
+        // an easy mistake to make is to think bigendtmp is big endian, just from oversight. You converted it to little endian, stupid!
+        ftu=(unsigned char)((bigendtmp1>>8)&0x00FF);
+        ftl=(unsigned char)(bigendtmp1&0x00FF);
+        printf("i:%.2x, i+1:%.2x, bigendtmp1hx %.4x, bigendtmp1int %i, ftu %x, ftl %x\n", bf1[i], bf1[i+1], bigendtmp1, bigendtmp1, ftu, ftl);
+        bf1[i] = (char)ftl;
+        bf1[i+1] = (char)ftu;
     }
 
     fwrite(bf1, sizeof(char), inhdr1->byid, outwavfp);
