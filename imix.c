@@ -228,6 +228,7 @@ int main(int argc, char *argv[])
     }
 
     // now check timept plus file duration is not over: rather work out how many times it would fit.
+    printf("byid1=%i, byid2=%i\n", inhdr1->byid, inhdr2->byid); 
 
     /* now we prepare the output file */
     char outfn[ARBSZ]={0};
