@@ -35,7 +35,7 @@ I've copied that file pcm.c to alpcm.c here.
 #define BUFSIZE 12000 // the sound payload
 #define BUFTIMES 10
 
-static char *hwdevice = "plughw:0,7";			/* playback device */
+static char *hwdevice = "plughw:0,8";			/* playback device */
 // static char *hwdevice = "pulse:DEVICE=Virtual_Sink_2";
 // static char *hwdevice = "pulse";
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
         // actually all that error checking should have prevented that.
         if(properwritei != BUFSIZE) {
             printf("i=%i | bufwritten=%i | bufsize=%i\n", i, properwritei, BUFSIZE); 
-            fprintf (stderr, "Complete write to audio interface failed (%s)\n", snd_strerror (err));
+            fprintf (stderr, "Complete write to audio interface failed (%s)\n", snd_strerror (properwritei));
             exit(EXIT_FAILURE);
         }
     }
