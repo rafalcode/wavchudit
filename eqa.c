@@ -35,9 +35,9 @@ I've copied that file pcm.c to alpcm.c here.
 #define BUFSIZE 12000 // the sound payload
 #define BUFTIMES 10
 
-// static char *hwdevice = "plughw:0,0";			/* playback device */
+static char *hwdevice = "plughw:0,7";			/* playback device */
 // static char *hwdevice = "pulse:DEVICE=Virtual_Sink_2";
-static char *hwdevice = "pulse";
+// static char *hwdevice = "pulse";
 
 int main(int argc, char *argv[])
 {
@@ -119,6 +119,7 @@ int main(int argc, char *argv[])
         // device = pulse survives up to above line, then we get segmentaion fault.
         // actually all that error checking should have prevented that.
         if(properwritei != BUFSIZE) {
+            printf("i=%i | bufwritten=%i | bufsize=%i\n", i, properwritei, BUFSIZE); 
             fprintf (stderr, "Complete write to audio interface failed (%s)\n", snd_strerror (err));
             exit(EXIT_FAILURE);
         }
