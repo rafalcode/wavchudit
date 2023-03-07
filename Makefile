@@ -4,11 +4,18 @@ DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
 LIBSF=-lsndfile -lm
 FLACLIBS=-lFLAC
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw chanceraw gwav seeraw seerawh swavdcogs im0 imix imix0 mixin0
+EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw chanceraw gwav seeraw seerawh swavdcogs im0 imix imix0 mixin0 eqa alpcm
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
 	${CC} ${CFLAGS} $^ -o $@
+
+#from Paul's equalarea site
+eqa: eqa.c
+	${CC} $(DCFLAGS) $^ -o $@ -lasound
+# none too wonky ... try an example from alsa lib: alpcm
+alpcm: alpcm.c
+	${CC} $(DCFLAGS) $^ -o $@ -lasound -lm
 
 # "cajwav" mnemonic "WAV CAJoler". This means it assumes there is a wav header and looks for some of the text entries. After that it starts to use the ftell() command to calculate the values of the other fields in the header.
 # despite its name "cajole" it does not cajole a raw into a wav, use chewaud for that.
