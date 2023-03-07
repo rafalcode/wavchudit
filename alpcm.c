@@ -16,7 +16,7 @@
 #define ESTRPIPE ESPIPE
 #endif
 
-static char *device = "plughw:0,0";			/* playback device */
+static char *device = "plughw:2,0";			/* playback device */
 static snd_pcm_format_t format = SND_PCM_FORMAT_S16;	/* sample format */
 static unsigned int rate = 44100;			/* stream rate */
 static unsigned int channels = 1;			/* count of channels */
@@ -236,7 +236,7 @@ static int xrun_recovery(snd_pcm_t *handle, int err) /*   Underrun and suspend r
 	return err;
 }
 
-static int write_loop(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas) /* Transfer method - write only */
+static int write_loop(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas) /* Transfer method - write only: without special options this is the most probable one used. */
 {
 	double phase = 0;
 	signed short *ptr;
@@ -262,19 +262,15 @@ static int write_loop(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_
 	}
 }
  
-/*
- *   Transfer method - write and wait for room in buffer using poll
- */
-
-static int wait_for_poll(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count)
+static int wait_for_poll(snd_pcm_t *handle, struct pollfd *ufds, unsigned int count) /* Transfer method - write and wait for room in buffer using poll */
 {
 	unsigned short revents;
 	while (1) {
 		poll(ufds, count, -1);
 		snd_pcm_poll_descriptors_revents(handle, ufds, count, &revents);
-		if (revents & POLLERR)
+		if(revents & POLLERR)
 			return -EIO;
-		if (revents & POLLOUT)
+		if(revents & POLLOUT)
 			return 0;
 	}
 }
@@ -507,9 +503,7 @@ static void async_direct_callback(snd_async_handler_t *ahandler) /* Transfer met
 	}
 }
 
-static int async_direct_loop(snd_pcm_t *handle,
-			     signed short *samples ATTRIBUTE_UNUSED,
-			     snd_pcm_channel_area_t *areas ATTRIBUTE_UNUSED)
+static int async_direct_loop(snd_pcm_t *handle, signed short *samples ATTRIBUTE_UNUSED, snd_pcm_channel_area_t *areas ATTRIBUTE_UNUSED)
 {
 	struct async_private_data data;
 	snd_async_handler_t *ahandler;
@@ -553,21 +547,13 @@ static int async_direct_loop(snd_pcm_t *handle,
 		printf("Start error: %s\n", snd_strerror(err));
 		exit(EXIT_FAILURE);
 	}
-
-	/* because all other work is done in the signal handler,
-	   suspend the process */
+	/* because all other work is done in the signal handler, suspend the process */
 	while (1) {
 		sleep(1);
 	}
 }
 
-/*
- *   Transfer method - direct write only
- */
-
-static int direct_loop(snd_pcm_t *handle,
-		       signed short *samples ATTRIBUTE_UNUSED,
-		       snd_pcm_channel_area_t *areas ATTRIBUTE_UNUSED)
+static int direct_loop(snd_pcm_t *handle, signed short *samples ATTRIBUTE_UNUSED, snd_pcm_channel_area_t *areas ATTRIBUTE_UNUSED) /* Transfer method - direct write only */
 {
 	double phase = 0;
 	const snd_pcm_channel_area_t *my_areas;
@@ -647,13 +633,8 @@ static int direct_loop(snd_pcm_t *handle,
 	}
 }
  
-/*
- *   Transfer method - direct write only using mmap_write functions
- */
 
-static int direct_write_loop(snd_pcm_t *handle,
-			     signed short *samples,
-			     snd_pcm_channel_area_t *areas)
+static int direct_write_loop(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas) /* Transfer method - direct write only using mmap_write functions */
 {
 	double phase = 0;
 	signed short *ptr;
@@ -680,16 +661,10 @@ static int direct_write_loop(snd_pcm_t *handle,
 	}
 }
  
-/*
- *
- */
-
 struct transfer_method {
 	const char *name;
 	snd_pcm_access_t access;
-	int (*transfer_loop)(snd_pcm_t *handle,
-			     signed short *samples,
-			     snd_pcm_channel_area_t *areas);
+	int (*transfer_loop)(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas);
 };
 
 static struct transfer_method transfer_methods[] = {
@@ -866,7 +841,6 @@ int main(int argc, char *argv[])
 		printf("Setting of swparams failed: %s\n", snd_strerror(err));
 		exit(EXIT_FAILURE);
 	}
-
 	if (verbose > 0)
 		snd_pcm_dump(handle, output);
 

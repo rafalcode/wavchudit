@@ -35,7 +35,7 @@ I've copied that file pcm.c to alpcm.c here.
 #define BUFSIZE 12000 // the sound payload
 #define BUFTIMES 10
 
-static char *hwdevice = "plughw:0,8";			/* playback device */
+static char *hwdevice = "plughw:2,0";			/* playback device */
 // static char *hwdevice = "pulse:DEVICE=Virtual_Sink_2";
 // static char *hwdevice = "pulse";
 

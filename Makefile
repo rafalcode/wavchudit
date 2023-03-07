@@ -10,7 +10,7 @@ EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev 
 sanhwav: sanhwav.c
 	${CC} ${CFLAGS} $^ -o $@
 
-#from Paul's equalarea site
+#from Paul's equalarea site, but I wouldn't bother with it really, alpcm.c works although it's very long winded. Code covers all these other case wihich are not explained.
 eqa: eqa.c
 	${CC} $(DCFLAGS) $^ -o $@ -lasound
 # none too wonky ... try an example from alsa lib: alpcm
