@@ -16,6 +16,31 @@
 #define ESTRPIPE ESPIPE
 #endif
 
+struct transfer_method /* we have various transfer methods, we use this struct with function pointer */
+{
+	const char *name;
+	snd_pcm_access_t access;
+	int (*transfer_loop)(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas);
+};
+
+static struct transfer_method transfer_methods[] = {
+	{ "write", SND_PCM_ACCESS_RW_INTERLEAVED, write_loop },
+	{ "write_and_poll", SND_PCM_ACCESS_RW_INTERLEAVED, write_and_poll_loop },
+	{ "async", SND_PCM_ACCESS_RW_INTERLEAVED, async_loop },
+	{ "async_direct", SND_PCM_ACCESS_MMAP_INTERLEAVED, async_direct_loop },
+	{ "direct_interleaved", SND_PCM_ACCESS_MMAP_INTERLEAVED, direct_loop },
+	{ "direct_noninterleaved", SND_PCM_ACCESS_MMAP_NONINTERLEAVED, direct_loop },
+	{ "direct_write", SND_PCM_ACCESS_MMAP_INTERLEAVED, direct_write_loop },
+	{ NULL, SND_PCM_ACCESS_RW_INTERLEAVED, NULL }
+};
+
+struct async_private_data
+{
+	signed short *samples;
+	snd_pcm_channel_area_t *areas;
+	double phase;
+};
+
 static char *device = "plughw:2,0";			/* playback device */
 static snd_pcm_format_t format = SND_PCM_FORMAT_S16;	/* sample format */
 static unsigned int rate = 44100;			/* stream rate */
@@ -358,12 +383,6 @@ static int write_and_poll_loop(snd_pcm_t *handle, signed short *samples, snd_pcm
 	}
 }
 
-struct async_private_data {
-	signed short *samples;
-	snd_pcm_channel_area_t *areas;
-	double phase;
-};
-
 static void async_callback(snd_async_handler_t *ahandler) /* Transfer method - asynchronous notification */
 {
 	snd_pcm_t *handle = snd_async_handler_get_pcm(ahandler);
@@ -632,7 +651,6 @@ static int direct_loop(snd_pcm_t *handle, signed short *samples ATTRIBUTE_UNUSED
 		}
 	}
 }
- 
 
 static int direct_write_loop(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas) /* Transfer method - direct write only using mmap_write functions */
 {
@@ -660,23 +678,6 @@ static int direct_write_loop(snd_pcm_t *handle, signed short *samples, snd_pcm_c
 		}
 	}
 }
- 
-struct transfer_method {
-	const char *name;
-	snd_pcm_access_t access;
-	int (*transfer_loop)(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas);
-};
-
-static struct transfer_method transfer_methods[] = {
-	{ "write", SND_PCM_ACCESS_RW_INTERLEAVED, write_loop },
-	{ "write_and_poll", SND_PCM_ACCESS_RW_INTERLEAVED, write_and_poll_loop },
-	{ "async", SND_PCM_ACCESS_RW_INTERLEAVED, async_loop },
-	{ "async_direct", SND_PCM_ACCESS_MMAP_INTERLEAVED, async_direct_loop },
-	{ "direct_interleaved", SND_PCM_ACCESS_MMAP_INTERLEAVED, direct_loop },
-	{ "direct_noninterleaved", SND_PCM_ACCESS_MMAP_NONINTERLEAVED, direct_loop },
-	{ "direct_write", SND_PCM_ACCESS_MMAP_INTERLEAVED, direct_write_loop },
-	{ NULL, SND_PCM_ACCESS_RW_INTERLEAVED, NULL }
-};
 
 static void help(void)
 {
@@ -861,6 +862,7 @@ int main(int argc, char *argv[])
 		areas[chn].step = channels * snd_pcm_format_physical_width(format);
 	}
 
+    /* this the crucial line, invokes the function in the fnptr of the transfer_methods struct */
 	err = transfer_methods[method].transfer_loop(handle, samples, areas);
 	if (err < 0)
 		printf("Transfer failed: %s\n", snd_strerror(err));
