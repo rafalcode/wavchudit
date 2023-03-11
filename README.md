@@ -60,3 +60,7 @@ time and it will split the wavfile into chunks of that size. If - as is probably
 * pulledl: please run without arguments. Requires an mplayer generated EDL file.
 * wtxslice: takes two wavfiles and transfer an endslice of the first to the beginning of the second. Slice point - the third argument, no prizes for guessing which the first and second arguments are - must be within the length of the first wav file and is in mins:secs.centisecs format.
 * gsine: this is an elementary sine wave generator.
+
+# lop.c
+I revisted beglop and endlop as I seemed to be using one after the other, and actually they quite early codes, with the hole wavfile being read in. That definitely was inefficient. Prb I was just saving time.
+Truth is, you can use `fseek()` ina an appropriate manner and avoid slurping the enitre thing. That's all done on lop as is the two timepoint interval were you give the start and end time points to extract a piece of a big file from.
