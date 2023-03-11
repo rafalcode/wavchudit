@@ -4,7 +4,7 @@ DCFLAGS=-g -Wall -DDBG
 LIBSMP3=-lmp3splt
 LIBSF=-lsndfile -lm
 FLACLIBS=-lFLAC
-EXECUTABLES=sanhwav cajwav beglop endlop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw chanceraw gwav seeraw seerawh swavdcogs im0 imix imix0 mixin0 eqa alpcm
+EXECUTABLES=sanhwav cajwav beglop endlop lop spwav2d catwav xbeglop plreader spwlev wavedl wavedl_d swavedl swavedl_d pulledl pulledl_d wtxslice routim routim_d routim_dd mks00 smedl splmoftp splmofedl smedlo smedlo_d chewaud chewaud_d mymin gsine flamain smedlo_t coerceraw toraw chanceraw gwav seeraw seerawh swavdcogs im0 imix imix0 mixin0 eqa alpcm
 
 # sanhwav: is wav-file's header sane, does it match up to the physical size of the file?
 sanhwav: sanhwav.c
@@ -53,6 +53,10 @@ xbeglop: xbeglop.c
 
 endlop: endlop.c
 	${CC} ${CFLAGS} $^ -o $@
+
+# yes, a new lopping prog ... actually beglop and endlop are a bit outdated.o# in fact what's really common is to keep only something between two time points.
+lop: lop.c
+	${CC} ${DCFLAGS} $^ -o $@
 
 # split wavs to a tmpdir according to chunks sized in mm:ss.huns format.
 spwav2d: spwav2d.c
